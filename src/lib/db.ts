@@ -245,3 +245,69 @@ export function getExperiments(
       .all(sessionId, limit, offset) as Experiment[]
   );
 }
+
+export function countExperiments(sessionId: string): number {
+  const db = getDb();
+  return withRetry(() => {
+    const row = db
+      .prepare("SELECT COUNT(*) as count FROM experiments WHERE session_id = ?")
+      .get(sessionId) as { count: number };
+    return row.count;
+  });
+}
+
+export function getAssignedGpuIndexes(): number[] {
+  const db = getDb();
+  return withRetry(() => {
+    const rows = db
+      .prepare(
+        "SELECT gpu_index FROM sessions WHERE status = 'running' AND gpu_index IS NOT NULL"
+      )
+      .all() as Array<{ gpu_index: number }>;
+    return rows.map((r) => r.gpu_index);
+  });
+}
+
+export function getSessionByTag(tag: string): Session | undefined {
+  const db = getDb();
+  return withRetry(() =>
+    db.prepare("SELECT * FROM sessions WHERE tag = ?").get(tag) as
+      | Session
+      | undefined
+  );
+}
+
+export function getSessionCounts(): {
+  running: number;
+  queued: number;
+  total: number;
+} {
+  const db = getDb();
+  return withRetry(() => {
+    const total = (
+      db.prepare("SELECT COUNT(*) as c FROM sessions").get() as { c: number }
+    ).c;
+    const running = (
+      db
+        .prepare("SELECT COUNT(*) as c FROM sessions WHERE status = 'running'")
+        .get() as { c: number }
+    ).c;
+    const queued = (
+      db
+        .prepare("SELECT COUNT(*) as c FROM sessions WHERE status = 'queued'")
+        .get() as { c: number }
+    ).c;
+    return { running, queued, total };
+  });
+}
+
+export function getNextQueuedSession(): Session | undefined {
+  const db = getDb();
+  return withRetry(() =>
+    db
+      .prepare(
+        "SELECT * FROM sessions WHERE status = 'queued' ORDER BY created_at ASC LIMIT 1"
+      )
+      .get() as Session | undefined
+  );
+}
