@@ -1,10 +1,14 @@
 "use client";
 
+import { useEffect, useState, useCallback } from "react";
 import { useSSE } from "@/hooks/use-sse";
 import { useGpuPoll } from "@/hooks/use-gpu-poll";
 import { useSessionStore } from "@/stores/session-store";
 import { SessionList } from "./session-list";
+import { SessionDetail } from "./session-detail";
+import { ComparisonView } from "./comparison-view";
 import { HexIcon, PlusIcon } from "./icons";
+import type { Experiment, Session } from "@/lib/types";
 
 function StatsBar() {
   const sessions = useSessionStore((s) => s.sessions);
@@ -94,13 +98,77 @@ function ConnectionDot() {
   );
 }
 
+function MainContent() {
+  const view = useSessionStore((s) => s.view);
+  const selectedId = useSessionStore((s) => s.selectedId);
+  const sessions = useSessionStore((s) => s.sessions);
+  const [experiments, setExperiments] = useState<Experiment[]>([]);
+
+  const selectedSession = sessions.find((s) => s.id === selectedId) ?? null;
+
+  const fetchExperiments = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/sessions/${id}/experiments?limit=2000`);
+      if (res.ok) {
+        const data = (await res.json()) as {
+          experiments: Experiment[];
+          total: number;
+        };
+        setExperiments(data.experiments);
+      }
+    } catch {
+      setExperiments([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedId) {
+      void fetchExperiments(selectedId);
+    } else {
+      setExperiments([]);
+    }
+  }, [selectedId, fetchExperiments]);
+
+  // Refetch when experiment count changes (SSE updates)
+  const selectedExpCount = selectedSession?.experiment_count ?? 0;
+  useEffect(() => {
+    if (selectedId && selectedExpCount > 0) {
+      void fetchExperiments(selectedId);
+    }
+  }, [selectedId, selectedExpCount, fetchExperiments]);
+
+  if (view === "compare") {
+    return <ComparisonView />;
+  }
+
+  if (view === "dashboard" && selectedSession) {
+    return (
+      <SessionDetail session={selectedSession} experiments={experiments} />
+    );
+  }
+
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-2">
+      <HexIcon size={48} className="text-[var(--color-border)]" />
+      <div
+        className="text-lg font-semibold uppercase tracking-wider"
+        style={{ color: "var(--color-text-muted)" }}
+      >
+        Select a Session
+      </div>
+      <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+        Choose a session from the sidebar to view details
+      </div>
+    </div>
+  );
+}
+
 export function Dashboard() {
   useSSE();
   useGpuPoll();
 
   const view = useSessionStore((s) => s.view);
   const setView = useSessionStore((s) => s.setView);
-  const selectedId = useSessionStore((s) => s.selectedId);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
@@ -185,38 +253,8 @@ export function Dashboard() {
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
         <SessionList />
-
         <main className="flex-1 overflow-y-auto p-6">
-          {view === "dashboard" && selectedId ? (
-            <div
-              className="flex h-full items-center justify-center text-sm"
-              style={{ color: "var(--color-text-muted)" }}
-            >
-              Session detail view — coming in Session 5
-            </div>
-          ) : view === "compare" ? (
-            <div
-              className="flex h-full items-center justify-center text-sm"
-              style={{ color: "var(--color-text-muted)" }}
-            >
-              Comparison view — coming in Session 5
-            </div>
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-2">
-              <div
-                className="text-lg font-semibold uppercase tracking-wider"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                Select a Session
-              </div>
-              <div
-                className="text-xs"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                Choose a session from the sidebar to view details
-              </div>
-            </div>
-          )}
+          <MainContent />
         </main>
       </div>
     </div>
