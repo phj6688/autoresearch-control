@@ -25,9 +25,10 @@ const AGENT_SHORT: Record<string, string> = {
 interface SessionCardProps {
   session: Session;
   experiments?: Experiment[];
+  onSelectMobile?: () => void;
 }
 
-export function SessionCard({ session, experiments = [] }: SessionCardProps) {
+export function SessionCard({ session, experiments = [], onSelectMobile }: SessionCardProps) {
   const selectedId = useSessionStore((s) => s.selectedId);
   const compareIds = useSessionStore((s) => s.compareIds);
   const selectSession = useSessionStore((s) => s.selectSession);
@@ -56,12 +57,14 @@ export function SessionCard({ session, experiments = [] }: SessionCardProps) {
       onClick={() => {
         selectSession(session.id);
         setView("dashboard");
+        onSelectMobile?.();
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           selectSession(session.id);
           setView("dashboard");
+          onSelectMobile?.();
         }
       }}
     >

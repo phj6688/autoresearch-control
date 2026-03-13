@@ -4,6 +4,7 @@ import * as pm from "./process-manager";
 import { getGpuStatus, findFreeGpu } from "./gpu";
 import { watchSession } from "./watcher";
 import { broker } from "./sse-broker";
+import { evaluateExperimentAlerts } from "./telegram";
 import type {
   Session,
   CreateSessionInput,
@@ -55,6 +56,8 @@ function onNewExperiments(
       experiment: inserted,
     });
   }
+
+  evaluateExperimentAlerts(session, experiments);
 
   db.updateSession(sessionId, {
     best_val_bpb: bestBpb,

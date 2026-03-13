@@ -23,14 +23,21 @@ function sortSessions(sessions: Session[]): Session[] {
   });
 }
 
-export function SessionList() {
+interface SessionListProps {
+  onSelectMobile?: () => void;
+}
+
+export function SessionList({ onSelectMobile }: SessionListProps) {
   const sessions = useSessionStore((s) => s.sessions);
   const sorted = sortSessions(sessions);
 
   return (
     <aside
       className="flex h-full w-[340px] shrink-0 flex-col overflow-hidden border-r"
-      style={{ borderColor: "var(--color-border)" }}
+      style={{
+        borderColor: "var(--color-border)",
+        backgroundColor: "var(--color-bg)",
+      }}
     >
       <div className="overflow-y-auto p-3">
         <GpuBar />
@@ -44,7 +51,11 @@ export function SessionList() {
 
         <div className="space-y-2">
           {sorted.map((session) => (
-            <SessionCard key={session.id} session={session} />
+            <SessionCard
+              key={session.id}
+              session={session}
+              onSelectMobile={onSelectMobile}
+            />
           ))}
         </div>
 

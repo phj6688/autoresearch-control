@@ -28,9 +28,10 @@ const AGENT_NAMES: Record<string, string> = {
 interface SessionDetailProps {
   session: Session;
   experiments: Experiment[];
+  onFork?: (session: Session) => void;
 }
 
-export function SessionDetail({ session, experiments }: SessionDetailProps) {
+export function SessionDetail({ session, experiments, onFork }: SessionDetailProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const updateSessionStatus = useSessionStore((s) => s.updateSessionStatus);
 
@@ -187,7 +188,8 @@ export function SessionDetail({ session, experiments }: SessionDetailProps) {
                 backgroundColor: "var(--color-border)",
                 color: "var(--color-text-secondary)",
               }}
-              title="Fork — session 6 will wire this to the new session modal"
+              onClick={() => onFork?.(session)}
+              title="Fork this session into a new session"
             >
               <ForkIcon size={12} />
               Fork

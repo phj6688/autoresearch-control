@@ -1,0 +1,27 @@
+services:
+  mission-control:
+    build: .
+    container_name: autoresearch-control
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    environment:
+      - PORT=3100
+      - AUTORESEARCH_REPO_PATH=/repo
+      - AUTORESEARCH_WORKTREE_DIR=/worktrees
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - DEFAULT_AGENT=${DEFAULT_AGENT:-claude-code}
+      - DEFAULT_AGENT_COMMAND=${DEFAULT_AGENT_COMMAND:-claude --model claude-opus-4-6}
+    volumes:
+      - ./data:/app/data
+      - ${AUTORESEARCH_REPO_PATH:-./repo}:/repo
+      - ${AUTORESEARCH_WORKTREE_DIR:-./worktrees}:/worktrees
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    network_mode: host

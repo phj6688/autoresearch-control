@@ -311,3 +311,17 @@ export function getNextQueuedSession(): Session | undefined {
       .get() as Session | undefined
   );
 }
+
+export function insertAlert(alert: {
+  session_id: string;
+  type: string;
+  message: string;
+  sent: number;
+}): void {
+  const db = getDb();
+  withRetry(() => {
+    db.prepare(
+      `INSERT INTO alerts (session_id, type, message, sent) VALUES (?, ?, ?, ?)`
+    ).run(alert.session_id, alert.type, alert.message, alert.sent);
+  });
+}
