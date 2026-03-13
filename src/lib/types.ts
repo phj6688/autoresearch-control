@@ -1,0 +1,98 @@
+export type SessionStatus =
+  | "queued"
+  | "running"
+  | "paused"
+  | "completed"
+  | "failed"
+  | "killed";
+
+export type AgentType = "claude-code" | "codex" | "aider" | "gemini-cli";
+
+export interface Session {
+  id: string;
+  tag: string;
+  status: SessionStatus;
+  gpu_index: number | null;
+  agent_type: AgentType;
+  strategy: string;
+  branch: string;
+  worktree_path: string | null;
+  seed_from: string | null;
+  tmux_session: string | null;
+  program_md: string | null;
+  best_val_bpb: number | null;
+  experiment_count: number;
+  commit_count: number;
+  started_at: number | null;
+  finished_at: number | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface Experiment {
+  id: number;
+  session_id: string;
+  run_number: number;
+  val_bpb: number;
+  peak_vram_mb: number | null;
+  duration_s: number | null;
+  committed: number;
+  change_summary: string | null;
+  git_hash: string | null;
+  delta: number | null;
+  log_tail: string | null;
+  created_at: number;
+}
+
+export interface GpuInfo {
+  index: number;
+  name: string;
+  memory_total_mb: number;
+  memory_used_mb: number;
+  utilization_pct: number;
+  temperature_c: number;
+}
+
+export interface GpuAssignment {
+  gpu_index: number;
+  session_id: string | null;
+  assigned_at: number | null;
+}
+
+export type AlertType = "breakthrough" | "failure" | "completed" | "stall";
+
+export interface Alert {
+  id: number;
+  session_id: string;
+  type: AlertType;
+  message: string;
+  sent: number;
+  created_at: number;
+}
+
+export type SSEEvent =
+  | { type: "experiment"; sessionId: string; experiment: Experiment }
+  | { type: "session-status"; sessionId: string; status: SessionStatus }
+  | { type: "gpu-update"; gpus: GpuInfo[] }
+  | { type: "alert"; alert: Alert }
+  | { type: "heartbeat" };
+
+export interface CreateSessionInput {
+  tag: string;
+  agent_type: AgentType;
+  strategy: string;
+  gpu_index?: number | null;
+  seed_from?: string | null;
+  program_md?: string | null;
+  agent_command_override?: string | null;
+}
+
+export interface PatchSessionInput {
+  action: "pause" | "resume" | "kill";
+}
+
+export interface ForkSessionInput {
+  tag: string;
+  strategy?: string;
+  gpu_index?: number | null;
+}

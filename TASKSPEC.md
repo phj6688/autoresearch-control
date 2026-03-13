@@ -495,11 +495,11 @@ For Uptime Kuma integration.
 
 ```env
 # Required
-AUTORESEARCH_REPO_PATH=/home/lumo/autoresearch        # Path to cloned autoresearch repo
-AUTORESEARCH_WORKTREE_DIR=/home/lumo/autoresearch-runs # Where worktrees are created
+AUTORESEARCH_REPO_PATH=/home/lumo/autoresearch_foundation/autoresearch        # Path to cloned autoresearch repo
+AUTORESEARCH_WORKTREE_DIR=/home/lumo/autoresearch_foundation/autoresearch-runs # Where worktrees are created
 
 # Optional
-PORT=3100                                               # Server port (default 3100)
+PORT=3200                                               # Server port (default 3200)
 TELEGRAM_BOT_TOKEN=                                     # For alerts
 TELEGRAM_CHAT_ID=                                       # For alerts
 DEFAULT_AGENT=claude-code                               # Default agent type

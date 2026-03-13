@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+:root {
+  --color-bg: #020617;
+  --color-surface: #0f172a;
+  --color-border: #1e293b;
+  --color-text-primary: #e2e8f0;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #475569;
+  --color-accent: #22d3ee;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-error: #f87171;
+  --color-purple: #a78bfa;
+  --color-pink: #f472b6;
+
+  --color-status-running-bg: #064e3b;
+  --color-status-running-text: #34d399;
+  --color-status-completed-bg: #1e1b4b;
+  --color-status-completed-text: #a78bfa;
+  --color-status-queued-bg: #1c1917;
+  --color-status-queued-text: #78716c;
+  --color-status-failed-bg: #450a0a;
+  --color-status-failed-text: #f87171;
+  --color-status-paused-bg: #422006;
+  --color-status-paused-text: #fbbf24;
+  --color-status-killed-bg: #1c1917;
+  --color-status-killed-text: #78716c;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 3px;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
