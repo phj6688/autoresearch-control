@@ -1,0 +1,23 @@
+"use client";
+
+import { useEffect } from "react";
+import { useSessionStore } from "@/stores/session-store";
+import type { GpuInfo } from "@/lib/types";
+
+export function useGpuPoll(): void {
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/gpus");
+        if (res.ok) {
+          const gpus = (await res.json()) as GpuInfo[];
+          useSessionStore.getState().setGpus(gpus);
+        }
+      } catch {
+        /* network error — will retry next interval */
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
+}
