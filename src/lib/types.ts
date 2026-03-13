@@ -96,3 +96,62 @@ export interface ForkSessionInput {
   strategy?: string;
   gpu_index?: number | null;
 }
+
+export interface SpawnConfig {
+  tag: string;
+  worktreePath: string;
+  gpuIndex: number;
+  agentType: AgentType;
+  agentCommand?: string;
+  programMd: string;
+}
+
+export interface WatcherHandle {
+  stop: () => void;
+}
+
+export interface GitCommit {
+  hash: string;
+  message: string;
+}
+
+export interface WorktreeInfo {
+  path: string;
+  head: string;
+  branch: string | null;
+}
+
+export interface DiffStat {
+  files: Array<{ file: string; insertions: number; deletions: number }>;
+  totalInsertions: number;
+  totalDeletions: number;
+}
+
+export class ProcessManagerError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ProcessManagerError";
+  }
+}
+
+export class GitWorktreeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GitWorktreeError";
+  }
+}
+
+export class GitBranchError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GitBranchError";
+  }
+}
+
+export interface ParsedExperiment {
+  run_number: number;
+  tag: string;
+  description: string;
+  val_bpb: number;
+  peak_vram_mb: number | null;
+}
