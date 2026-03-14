@@ -237,7 +237,7 @@ if (existing) {
   `).run(
     SESSION_ID,
     SESSION_TAG,
-    "running",
+    "paused",
     null,
     "claude-code",
     "Optimize docboost F1 score on 45 QA pairs (medicine/law/CS). Agent modifies extractor.py, stoplist.py, dedup.py, prompt_builder.py. Baseline F1: 32.5%.",
