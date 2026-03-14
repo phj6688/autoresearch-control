@@ -5,6 +5,7 @@ import { getGpuStatus, findFreeGpu } from "./gpu";
 import { watchSession } from "./watcher";
 import { broker } from "./sse-broker";
 import { evaluateExperimentAlerts } from "./telegram";
+import { isBetter } from "./metric-utils";
 import type {
   Session,
   CreateSessionInput,
@@ -45,7 +46,7 @@ function onNewExperiments(
       log_tail: null,
     });
 
-    if (bestBpb === null || exp.val_bpb < bestBpb) {
+    if (bestBpb === null || isBetter(exp.val_bpb, bestBpb, session.metric_direction)) {
       bestBpb = exp.val_bpb;
     }
     expCount++;

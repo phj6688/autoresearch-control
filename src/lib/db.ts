@@ -50,7 +50,10 @@ function createSchema(db: Database.Database): void {
       started_at      INTEGER,
       finished_at     INTEGER,
       created_at      INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
-      updated_at      INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+      updated_at      INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+      metric_name     TEXT NOT NULL DEFAULT 'val_bpb',
+      metric_direction TEXT NOT NULL DEFAULT 'lower'
+                       CHECK(metric_direction IN ('lower','higher'))
     );
 
     CREATE TABLE IF NOT EXISTS experiments (
@@ -136,8 +139,8 @@ export function insertSession(input: CreateSessionInput): Session {
   const branch = `autoresearch/${input.tag}`;
   return withRetry(() => {
     db.prepare(
-      `INSERT INTO sessions (id, tag, status, gpu_index, agent_type, strategy, branch, seed_from, program_md)
-       VALUES (?, ?, 'queued', ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO sessions (id, tag, status, gpu_index, agent_type, strategy, branch, seed_from, program_md, metric_name, metric_direction)
+       VALUES (?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
       input.tag,
@@ -146,7 +149,9 @@ export function insertSession(input: CreateSessionInput): Session {
       input.strategy,
       branch,
       input.seed_from ?? null,
-      input.program_md ?? null
+      input.program_md ?? null,
+      input.metric_name ?? "val_bpb",
+      input.metric_direction ?? "lower"
     );
     return db.prepare("SELECT * FROM sessions WHERE id = ?").get(id) as Session;
   });

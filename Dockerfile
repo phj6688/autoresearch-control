@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN corepack enable pnpm
 
 ENV NODE_ENV=production
-ENV PORT=3100
+ENV PORT=3200
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
@@ -33,6 +33,6 @@ COPY --from=builder /app/.next/static ./.next/static
 
 RUN mkdir -p /app/data
 
-EXPOSE 3100
+EXPOSE 3200
 
 CMD ["node", "server.js"]

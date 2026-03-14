@@ -1,6 +1,7 @@
 "use client";
 
-import type { Experiment } from "@/lib/types";
+import type { Experiment, MetricDirection } from "@/lib/types";
+import { findBestIndex } from "@/lib/metric-utils";
 
 interface SparklineProps {
   data: Experiment[];
@@ -8,6 +9,7 @@ interface SparklineProps {
   height?: number;
   color?: string;
   showBest?: boolean;
+  metricDirection?: MetricDirection;
 }
 
 export function Sparkline({
@@ -16,6 +18,7 @@ export function Sparkline({
   height = 32,
   color = "var(--color-accent)",
   showBest = true,
+  metricDirection = "lower",
 }: SparklineProps) {
   if (data.length === 0) {
     return (
@@ -43,14 +46,16 @@ export function Sparkline({
   const range = max - min || 0.001;
 
   const scaleX = (i: number) => pad + (i / Math.max(data.length - 1, 1)) * w;
-  const scaleY = (v: number) => pad + ((max - v) / range) * h;
+  const scaleY = metricDirection === "higher"
+    ? (v: number) => pad + ((max - v) / range) * h
+    : (v: number) => pad + ((v - min) / range) * h;
 
   const points = data.map((d, i) => `${scaleX(i)},${scaleY(d.val_bpb)}`).join(" ");
 
-  let bestIdx = 0;
-  for (let i = 1; i < data.length; i++) {
-    if (data[i].val_bpb < data[bestIdx].val_bpb) bestIdx = i;
-  }
+  const bestIdx = findBestIndex(
+    data.map((d) => d.val_bpb),
+    metricDirection
+  );
 
   return (
     <svg width={width} height={height}>

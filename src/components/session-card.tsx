@@ -5,6 +5,7 @@ import { useSessionStore } from "@/stores/session-store";
 import { StatusBadge } from "./status-badge";
 import { Sparkline } from "./sparkline";
 import { CompareIcon } from "./icons";
+import { formatMetricValue, metricLabel } from "@/lib/metric-utils";
 
 function formatElapsed(startedAt: number | null): string {
   if (!startedAt) return "--";
@@ -116,17 +117,17 @@ export function SessionCard({ session, experiments = [], onSelectMobile }: Sessi
       </div>
 
       <div className="mt-2">
-        <Sparkline data={experiments} width={280} height={28} />
+        <Sparkline data={experiments} width={280} height={28} metricDirection={session.metric_direction} />
       </div>
 
       <div className="mt-2 flex items-center gap-3 text-xs">
         <div>
-          <span style={{ color: "var(--color-text-muted)" }}>BEST </span>
+          <span style={{ color: "var(--color-text-muted)" }}>BEST {metricLabel(session.metric_name)} </span>
           <span
             className="font-semibold"
             style={{ color: "var(--color-accent)" }}
           >
-            {session.best_val_bpb?.toFixed(4) ?? "--"}
+            {formatMetricValue(session.best_val_bpb, session.metric_name)}
           </span>
         </div>
         <div>

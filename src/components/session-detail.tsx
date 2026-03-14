@@ -8,6 +8,7 @@ import { ExperimentTimeline } from "./experiment-timeline";
 import { CommitFeed } from "./commit-feed";
 import { CodeHeatmap } from "./code-heatmap";
 import { PauseIcon, PlayIcon, StopIcon, ForkIcon } from "./icons";
+import { formatMetricValue, formatDelta, metricLabel } from "@/lib/metric-utils";
 
 function formatElapsed(startedAt: number | null): string {
   if (!startedAt) return "--";
@@ -75,8 +76,8 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
 
   const metrics = [
     {
-      label: "BEST BPB",
-      value: session.best_val_bpb?.toFixed(4) ?? "--",
+      label: `BEST ${metricLabel(session.metric_name)}`,
+      value: formatMetricValue(session.best_val_bpb, session.metric_name),
       color: "var(--color-accent)",
       large: true,
     },
@@ -100,7 +101,7 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
     },
     {
       label: "AVG DELTA",
-      value: avgDelta !== 0 ? avgDelta.toFixed(4) : "--",
+      value: avgDelta !== 0 ? formatDelta(avgDelta, session.metric_name) : "--",
       color: "var(--color-purple)",
       large: false,
     },
@@ -245,7 +246,7 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
         >
           Experiment Timeline
         </div>
-        <ExperimentTimeline experiments={experiments} />
+        <ExperimentTimeline experiments={experiments} metricDirection={session.metric_direction} />
       </div>
 
       {/* Commit Feed + Heatmap */}

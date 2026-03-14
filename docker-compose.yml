@@ -4,9 +4,9 @@ services:
     container_name: autoresearch-control
     restart: unless-stopped
     ports:
-      - "3100:3100"
+      - "3200:3200"
     environment:
-      - PORT=3100
+      - PORT=3200
       - AUTORESEARCH_REPO_PATH=/repo
       - AUTORESEARCH_WORKTREE_DIR=/worktrees
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}

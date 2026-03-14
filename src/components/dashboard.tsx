@@ -11,6 +11,7 @@ import { NewSessionModal } from "./new-session-modal";
 import { ErrorBoundary } from "./error-boundary";
 import { HexIcon, PlusIcon } from "./icons";
 import type { Experiment, Session } from "@/lib/types";
+import { formatMetricValue, isBetter, metricLabel } from "@/lib/metric-utils";
 
 function StatsBar() {
   const sessions = useSessionStore((s) => s.sessions);
@@ -23,16 +24,23 @@ function StatsBar() {
   );
   const totalCommits = sessions.reduce((sum, s) => sum + s.commit_count, 0);
 
-  const bestBpb = sessions.reduce<number | null>((best, s) => {
+  const bestSession = sessions.reduce<Session | null>((best, s) => {
     if (s.best_val_bpb === null) return best;
-    if (best === null) return s.best_val_bpb;
-    return s.best_val_bpb < best ? s.best_val_bpb : best;
+    if (best === null || best.best_val_bpb === null) return s;
+    return isBetter(s.best_val_bpb, best.best_val_bpb, s.metric_direction) ? s : best;
   }, null);
 
   const commitRate =
     totalExperiments > 0
       ? Math.round((totalCommits / totalExperiments) * 100)
       : 0;
+
+  const globalBestLabel = bestSession
+    ? `GLOBAL BEST ${metricLabel(bestSession.metric_name)}`
+    : "GLOBAL BEST";
+  const globalBestValue = bestSession
+    ? formatMetricValue(bestSession.best_val_bpb, bestSession.metric_name)
+    : "--";
 
   const stats = [
     {
@@ -46,8 +54,8 @@ function StatsBar() {
       color: "var(--color-text-primary)",
     },
     {
-      label: "GLOBAL BEST",
-      value: bestBpb?.toFixed(4) ?? "--",
+      label: globalBestLabel,
+      value: globalBestValue,
       color: "var(--color-accent)",
     },
     {

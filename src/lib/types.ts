@@ -8,6 +8,8 @@ export type SessionStatus =
 
 export type AgentType = "claude-code" | "codex" | "aider" | "gemini-cli";
 
+export type MetricDirection = "lower" | "higher";
+
 export interface Session {
   id: string;
   tag: string;
@@ -27,6 +29,8 @@ export interface Session {
   finished_at: number | null;
   created_at: number;
   updated_at: number;
+  metric_name: string;
+  metric_direction: MetricDirection;
 }
 
 export interface Experiment {
@@ -85,6 +89,8 @@ export interface CreateSessionInput {
   seed_from?: string | null;
   program_md?: string | null;
   agent_command_override?: string | null;
+  metric_name?: string;
+  metric_direction?: MetricDirection;
 }
 
 export interface PatchSessionInput {

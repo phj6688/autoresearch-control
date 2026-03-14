@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Session, Experiment } from "@/lib/types";
 import { useSessionStore } from "@/stores/session-store";
 import { ProgressChart } from "./progress-chart";
+import { formatMetricValue, metricLabel, deltaIsGood } from "@/lib/metric-utils";
 
 type SortKey =
   | "tag"
@@ -134,14 +135,17 @@ export function ComparisonView() {
     );
   }
 
+  const primaryMetric = compared[0]?.metric_name ?? "val_bpb";
+  const primaryDirection = compared[0]?.metric_direction ?? "lower";
+
   const headers: Array<{ key: SortKey; label: string }> = [
     { key: "tag", label: "Session" },
     { key: "agent_type", label: "Agent" },
     { key: "experiment_count", label: "Experiments" },
     { key: "commit_count", label: "Commits" },
     { key: "hit_rate", label: "Hit Rate" },
-    { key: "best_val_bpb", label: "Best BPB" },
-    { key: "delta", label: "Δ from 0.998" },
+    { key: "best_val_bpb", label: `Best ${metricLabel(primaryMetric)}` },
+    { key: "delta", label: "Δ Best" },
     { key: "duration", label: "Duration" },
   ];
 
@@ -194,7 +198,11 @@ export function ComparisonView() {
           </thead>
           <tbody>
             {sorted.map((s) => {
-              const delta = s.best_val_bpb !== null ? s.best_val_bpb - 0.998 : null;
+              const firstExp = experimentsBySession[s.id]?.[0];
+              const baseline = firstExp?.val_bpb ?? null;
+              const delta = s.best_val_bpb !== null && baseline !== null
+                ? s.best_val_bpb - baseline
+                : null;
               return (
                 <tr
                   key={s.id}
@@ -235,19 +243,19 @@ export function ComparisonView() {
                     className="px-3 py-2 font-bold tabular-nums"
                     style={{ color: "var(--color-accent)" }}
                   >
-                    {s.best_val_bpb?.toFixed(4) ?? "--"}
+                    {formatMetricValue(s.best_val_bpb, s.metric_name)}
                   </td>
                   <td
                     className="px-3 py-2 tabular-nums"
                     style={{
                       color:
-                        delta !== null && delta < 0
+                        delta !== null && deltaIsGood(delta, primaryDirection)
                           ? "var(--color-success)"
                           : "var(--color-text-muted)",
                     }}
                   >
                     {delta !== null
-                      ? `${delta > 0 ? "+" : ""}${delta.toFixed(4)}`
+                      ? `${delta > 0 ? "+" : ""}${s.metric_name === "f1_pct" ? delta.toFixed(1) + "%" : delta.toFixed(4)}`
                       : "--"}
                   </td>
                   <td

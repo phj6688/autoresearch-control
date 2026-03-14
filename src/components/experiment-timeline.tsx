@@ -1,16 +1,19 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { Experiment } from "@/lib/types";
+import type { Experiment, MetricDirection } from "@/lib/types";
+import { findBestIndex } from "@/lib/metric-utils";
 
 interface ExperimentTimelineProps {
   experiments: Experiment[];
   compact?: boolean;
+  metricDirection?: MetricDirection;
 }
 
 export function ExperimentTimeline({
   experiments,
   compact = false,
+  metricDirection = "lower",
 }: ExperimentTimelineProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevLenRef = useRef(0);
@@ -55,10 +58,10 @@ export function ExperimentTimeline({
   const scaleY = (v: number) =>
     padY + ((v - min) / range) * (height - padY * 2);
 
-  let bestIdx = 0;
-  for (let i = 1; i < experiments.length; i++) {
-    if (experiments[i].val_bpb < experiments[bestIdx].val_bpb) bestIdx = i;
-  }
+  const bestIdx = findBestIndex(
+    experiments.map((e) => e.val_bpb),
+    metricDirection
+  );
 
   return (
     <div>

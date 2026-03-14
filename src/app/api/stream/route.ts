@@ -1,8 +1,16 @@
 import { broker } from "@/lib/sse-broker";
+import { startDocboostWatcher } from "@/lib/docboost-watcher";
 
 export const dynamic = "force-dynamic";
 
+let docboostWatcherStarted = false;
+
 export function GET(): Response {
+  if (!docboostWatcherStarted) {
+    docboostWatcherStarted = true;
+    startDocboostWatcher();
+  }
+
   const { stream } = broker.subscribe();
 
   return new Response(stream, {

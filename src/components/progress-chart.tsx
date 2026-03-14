@@ -2,7 +2,8 @@
 
 import { useRef, useEffect, useMemo } from "react";
 import * as d3 from "d3";
-import type { Session, Experiment } from "@/lib/types";
+import type { Session, Experiment, MetricDirection } from "@/lib/types";
+import { findBestIndex, metricLabel } from "@/lib/metric-utils";
 
 const COLORS = ["#22d3ee", "#a78bfa", "#f472b6", "#34d399", "#fbbf24", "#fb923c"];
 const FONT = "'JetBrains Mono', monospace";
@@ -71,11 +72,15 @@ export function ProgressChart({
         return;
       }
 
-      const yMin = d3.min(allValues)! - 0.005;
-      const yMax = d3.max(allValues)! + 0.005;
+      const direction: MetricDirection = sessions[0]?.metric_direction ?? "lower";
+      const metricName = sessions[0]?.metric_name ?? "val_bpb";
+      const padding = metricName === "f1_pct" ? 2 : 0.005;
+      const yMin = d3.min(allValues)! - padding;
+      const yMax = d3.max(allValues)! + padding;
 
       const xScale = d3.scaleLinear().domain([0, Math.max(maxLen - 1, 1)]).range([0, w]);
-      const yScale = d3.scaleLinear().domain([yMax, yMin]).range([0, h]);
+      const yDomain = direction === "higher" ? [yMin, yMax] : [yMax, yMin];
+      const yScale = d3.scaleLinear().domain(yDomain).range([h, 0]);
 
       // Y grid lines
       const yTicks = yScale.ticks(5);
@@ -95,7 +100,7 @@ export function ProgressChart({
           .attr("fill", "#94a3b8")
           .attr("font-family", FONT)
           .attr("font-size", 10)
-          .text(tick.toFixed(3));
+          .text(metricName === "f1_pct" ? tick.toFixed(0) + "%" : tick.toFixed(3));
       }
 
       // X axis labels
@@ -129,7 +134,7 @@ export function ProgressChart({
         .attr("fill", "#475569")
         .attr("font-family", FONT)
         .attr("font-size", 10)
-        .text("val_bpb");
+        .text(metricLabel(metricName));
 
       // Lines per session
       sessions.forEach((session, si) => {
@@ -150,10 +155,10 @@ export function ProgressChart({
           .attr("stroke-width", 1.5);
 
         // Data points
-        let bestIdx = 0;
-        for (let i = 1; i < exps.length; i++) {
-          if (exps[i].val_bpb < exps[bestIdx].val_bpb) bestIdx = i;
-        }
+        const bestIdx = findBestIndex(
+          exps.map((e) => e.val_bpb),
+          direction
+        );
 
         for (let i = 0; i < exps.length; i++) {
           const exp = exps[i];

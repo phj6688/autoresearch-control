@@ -54,8 +54,12 @@ export const useSessionStore = create<SessionStore>((set) => ({
         const newCount = s.experiment_count + 1;
         const newCommitCount =
           experiment.committed ? s.commit_count + 1 : s.commit_count;
+        const isBetter =
+          s.metric_direction === "higher"
+            ? experiment.val_bpb > (s.best_val_bpb ?? -Infinity)
+            : experiment.val_bpb < (s.best_val_bpb ?? Infinity);
         const newBest =
-          s.best_val_bpb === null || experiment.val_bpb < s.best_val_bpb
+          s.best_val_bpb === null || isBetter
             ? experiment.val_bpb
             : s.best_val_bpb;
         return {
