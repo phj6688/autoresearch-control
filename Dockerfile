@@ -11,7 +11,7 @@ WORKDIR /app
 RUN corepack enable pnpm
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN pnpm build
+RUN pnpm rebuild better-sqlite3 && pnpm build
 
 # Stage 3: Production
 FROM node:22-bookworm-slim AS runner
