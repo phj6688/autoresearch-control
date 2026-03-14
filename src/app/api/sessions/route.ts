@@ -4,7 +4,7 @@ import {
   createSession,
   SessionError,
 } from "@/lib/session-lifecycle";
-import type { AgentType } from "@/lib/types";
+import type { AgentType, MetricDirection } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +66,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
+    const metricName = typeof body.metric_name === "string" ? body.metric_name : undefined;
+    const metricDirection =
+      body.metric_direction === "lower" || body.metric_direction === "higher"
+        ? (body.metric_direction as MetricDirection)
+        : undefined;
+
     const session = await createSession({
       tag,
       agent_type: agentType as AgentType,
@@ -83,6 +89,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             ? body.seed_from
             : undefined,
       program_md: typeof body.programMd === "string" ? body.programMd : undefined,
+      metric_name: metricName,
+      metric_direction: metricDirection,
     });
 
     return NextResponse.json(session, { status: 201 });

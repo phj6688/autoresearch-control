@@ -72,8 +72,9 @@ export function ProgressChart({
         return;
       }
 
-      const direction: MetricDirection = sessions[0]?.metric_direction ?? "lower";
-      const metricName = sessions[0]?.metric_name ?? "val_bpb";
+      const sessionWithData = sessions.find((s) => (experimentsBySession[s.id]?.length ?? 0) > 0);
+      const direction: MetricDirection = sessionWithData?.metric_direction ?? sessions[0]?.metric_direction ?? "lower";
+      const metricName = sessionWithData?.metric_name ?? sessions[0]?.metric_name ?? "val_bpb";
       const padding = metricName === "f1_pct" ? 2 : 0.005;
       const yMin = d3.min(allValues)! - padding;
       const yMax = d3.max(allValues)! + padding;

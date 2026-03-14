@@ -2,13 +2,20 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSessionStore } from "@/stores/session-store";
-import type { AgentType, Session } from "@/lib/types";
+import type { AgentType, MetricDirection, Session } from "@/lib/types";
 
 const AGENT_OPTIONS: Array<{ value: AgentType; label: string }> = [
   { value: "claude-code", label: "Claude Code" },
   { value: "codex", label: "Codex" },
   { value: "aider", label: "Aider" },
   { value: "gemini-cli", label: "Gemini CLI" },
+];
+
+const METRIC_OPTIONS: Array<{ value: string; direction: MetricDirection; label: string }> = [
+  { value: "val_bpb", direction: "lower", label: "BPB (lower = better)" },
+  { value: "f1_pct", direction: "higher", label: "F1 % (higher = better)" },
+  { value: "accuracy", direction: "higher", label: "Accuracy (higher = better)" },
+  { value: "loss", direction: "lower", label: "Loss (lower = better)" },
 ];
 
 const TAG_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
@@ -24,6 +31,7 @@ interface FormState {
   agent_type: AgentType;
   strategy: string;
   gpu: string;
+  metric: string;
 }
 
 export function NewSessionModal({
@@ -40,6 +48,7 @@ export function NewSessionModal({
     agent_type: "claude-code",
     strategy: "",
     gpu: "auto",
+    metric: "val_bpb",
   });
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -60,6 +69,7 @@ export function NewSessionModal({
           agent_type: seedFrom.agent_type,
           strategy: seedFrom.strategy,
           gpu: "auto",
+          metric: seedFrom.metric_name,
         });
       } else {
         setForm({
@@ -67,6 +77,7 @@ export function NewSessionModal({
           agent_type: "claude-code",
           strategy: "",
           gpu: "auto",
+          metric: "val_bpb",
         });
       }
 
@@ -120,10 +131,15 @@ export function NewSessionModal({
       setServerError(null);
 
       try {
+        const selectedMetric = METRIC_OPTIONS.find((m) => m.value === form.metric)
+          ?? METRIC_OPTIONS[0];
+
         const body: Record<string, unknown> = {
           tag: form.tag,
           agent_type: form.agent_type,
           strategy: form.strategy,
+          metric_name: selectedMetric.value,
+          metric_direction: selectedMetric.direction,
         };
 
         if (form.gpu !== "auto") {
@@ -376,6 +392,32 @@ export function NewSessionModal({
                 {errors.gpu}
               </div>
             )}
+          </div>
+
+          {/* Metric */}
+          <div>
+            <label
+              className="mb-1 block text-xs font-semibold uppercase tracking-wider"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              Metric
+            </label>
+            <select
+              value={form.metric}
+              onChange={(e) => setField("metric", e.target.value)}
+              className="w-full rounded border px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--color-accent)]"
+              style={{
+                backgroundColor: "var(--color-bg)",
+                borderColor: "var(--color-border)",
+                color: "var(--color-text-primary)",
+              }}
+            >
+              {METRIC_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Server error */}
