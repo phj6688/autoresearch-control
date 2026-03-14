@@ -17,6 +17,8 @@ function StatsBar() {
   const sessions = useSessionStore((s) => s.sessions);
 
   const running = sessions.filter((s) => s.status === "running").length;
+  const paused = sessions.filter((s) => s.status === "paused").length;
+  const queued = sessions.filter((s) => s.status === "queued").length;
   const total = sessions.length;
   const totalExperiments = sessions.reduce(
     (sum, s) => sum + s.experiment_count,
@@ -45,7 +47,7 @@ function StatsBar() {
   const stats = [
     {
       label: "SESSIONS",
-      value: `${running}/${total}`,
+      value: `${running}R ${paused}P ${queued}Q`,
       color: "var(--color-accent)",
     },
     {
@@ -155,17 +157,16 @@ function MainContent({
         setExperiments(data.experiments);
       }
     } catch {
-      setExperiments([]);
+      /* preserve existing experiments on fetch error */
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    setExperiments([]);
     if (selectedId) {
       void fetchExperiments(selectedId);
-    } else {
-      setExperiments([]);
     }
   }, [selectedId, fetchExperiments]);
 

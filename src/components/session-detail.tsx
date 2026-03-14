@@ -74,6 +74,15 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
       ? committed.reduce((s, e) => s + (e.delta ?? 0), 0) / committed.length
       : 0;
 
+  const elapsedMs = session.started_at
+    ? (session.finished_at ?? Date.now()) - session.started_at
+    : 0;
+  const elapsedHours = elapsedMs / 3600000;
+  const velocity =
+    elapsedHours > 0 && experiments.length > 0
+      ? (experiments.length / elapsedHours).toFixed(1)
+      : null;
+
   const metrics = [
     {
       label: `BEST ${metricLabel(session.metric_name)}`,
@@ -103,6 +112,12 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
       label: "AVG DELTA",
       value: avgDelta !== 0 ? formatDelta(avgDelta, session.metric_name) : "--",
       color: "var(--color-purple)",
+      large: false,
+    },
+    {
+      label: "VELOCITY",
+      value: velocity ? `${velocity}/hr` : "--",
+      color: "var(--color-text-secondary)",
       large: false,
     },
   ];
@@ -246,7 +261,7 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
         >
           Experiment Timeline
         </div>
-        <ExperimentTimeline experiments={experiments} metricDirection={session.metric_direction} />
+        <ExperimentTimeline experiments={experiments} metricDirection={session.metric_direction} metricName={session.metric_name} />
       </div>
 
       {/* Commit Feed + Heatmap */}

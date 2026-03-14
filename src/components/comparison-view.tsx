@@ -137,6 +137,9 @@ export function ComparisonView() {
 
   const primaryMetric = compared[0]?.metric_name ?? "val_bpb";
   const primaryDirection = compared[0]?.metric_direction ?? "lower";
+  const hasMixedMetrics = compared.some(
+    (s) => s.metric_name !== primaryMetric || s.metric_direction !== primaryDirection
+  );
 
   const headers: Array<{ key: SortKey; label: string }> = [
     { key: "tag", label: "Session" },
@@ -168,6 +171,19 @@ export function ComparisonView() {
           {compareIds.length} sessions
         </span>
       </div>
+
+      {hasMixedMetrics && (
+        <div
+          className="rounded border px-3 py-2 text-xs"
+          style={{
+            borderColor: "var(--color-warning)",
+            backgroundColor: "rgba(251, 191, 36, 0.08)",
+            color: "var(--color-warning)",
+          }}
+        >
+          Sessions use different metrics or optimization directions. Comparison values may not be directly comparable.
+        </div>
+      )}
 
       <ProgressChart
         sessions={compared}

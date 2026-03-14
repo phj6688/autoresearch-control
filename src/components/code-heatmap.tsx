@@ -58,11 +58,22 @@ export function CodeHeatmap({ experiments }: CodeHeatmapProps) {
 
   return (
     <div>
-      <div
-        className="mb-2 text-xs font-semibold uppercase tracking-wider"
-        style={{ color: "var(--color-text-muted)" }}
-      >
-        Mutation Heatmap — train.py
+      <div className="mb-2 flex items-baseline justify-between">
+        <div
+          className="text-xs font-semibold uppercase tracking-wider"
+          style={{ color: "var(--color-text-muted)" }}
+        >
+          Mutation Heatmap — train.py
+        </div>
+        <div
+          className="flex items-center gap-1.5 text-xs"
+          style={{ color: "var(--color-text-muted)" }}
+          title="Frequency of agent edits per code region based on committed change summaries"
+        >
+          <span style={{ color: "var(--color-accent)" }}>Low</span>
+          <span style={{ color: "var(--color-warning)" }}>Mid</span>
+          <span style={{ color: "var(--color-error)" }}>High</span>
+        </div>
       </div>
       <div className="space-y-1.5">
         {REGIONS.map((region, i) => (

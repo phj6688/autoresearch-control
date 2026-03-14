@@ -2,18 +2,20 @@
 
 import { useEffect, useRef } from "react";
 import type { Experiment, MetricDirection } from "@/lib/types";
-import { findBestIndex } from "@/lib/metric-utils";
+import { findBestIndex, formatMetricValue, formatDelta } from "@/lib/metric-utils";
 
 interface ExperimentTimelineProps {
   experiments: Experiment[];
   compact?: boolean;
   metricDirection?: MetricDirection;
+  metricName?: string;
 }
 
 export function ExperimentTimeline({
   experiments,
   compact = false,
   metricDirection = "lower",
+  metricName = "val_bpb",
 }: ExperimentTimelineProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevLenRef = useRef(0);
@@ -81,6 +83,8 @@ export function ExperimentTimeline({
             const isCommitted = exp.committed !== 0;
             const isBest = i === bestIdx;
 
+            const tooltip = `Run #${exp.run_number} · ${formatMetricValue(exp.val_bpb, metricName)}${exp.delta !== null ? ` · ${formatDelta(exp.delta, metricName)}` : ""} · ${isCommitted ? "committed" : "discarded"}`;
+
             return (
               <g key={exp.id ?? i}>
                 <circle
@@ -93,7 +97,9 @@ export function ExperimentTimeline({
                       : "#334155"
                   }
                   opacity={isCommitted ? 1 : 0.6}
-                />
+                >
+                  <title>{tooltip}</title>
+                </circle>
                 {isBest && (
                   <circle
                     cx={x}
