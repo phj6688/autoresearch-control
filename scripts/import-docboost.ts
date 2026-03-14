@@ -267,8 +267,8 @@ if (existingCount >= resultFiles.length) {
   const insertExp = db.prepare(`
     INSERT INTO experiments
       (session_id, run_number, val_bpb, peak_vram_mb, duration_s, committed,
-       change_summary, delta, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       change_summary, delta, log_tail, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   let prevBest = 0;
@@ -294,6 +294,7 @@ if (existingCount >= resultFiles.length) {
         committed,
         summary.slice(0, 500),
         delta,
+        r.filename,
         ts
       );
     }
