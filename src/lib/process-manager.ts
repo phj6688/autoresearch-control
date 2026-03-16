@@ -54,6 +54,7 @@ export async function spawnSession(config: SpawnConfig): Promise<string> {
     );
   }
 
+
   const command =
     config.agentCommand ??
     AGENT_COMMANDS[config.agentType] ??

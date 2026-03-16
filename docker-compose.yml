@@ -3,6 +3,7 @@ services:
     build: .
     container_name: autoresearch-control
     environment:
+    - HOSTNAME=0.0.0.0
     - PORT=3200
     - AUTORESEARCH_REPO_PATH=/repo
     - AUTORESEARCH_WORKTREE_DIR=/worktrees
@@ -19,3 +20,6 @@ services:
     - ${AUTORESEARCH_REPO_PATH:-./repo}:/repo
     - ${AUTORESEARCH_WORKTREE_DIR:-./worktrees}:/worktrees
     - /sys/class/drm:/sys/class/drm:ro
+    - /home/peyman/.local/share/claude/versions/2.1.76:/usr/local/bin/claude:ro
+    - /home/peyman/.claude:/root/.claude
+    - /home/peyman/.claude.json:/root/.claude.json
