@@ -235,11 +235,12 @@ export async function restartSession(id: string): Promise<Session> {
     activeWatchers.delete(id);
   }
 
-  // Find a free GPU
-  const assignedGpus = db.getAssignedGpuIndexes();
-  const gpuIndex = await findFreeGpu(assignedGpus);
+  // GPU is optional — only allocate if session previously had one or one is available
+  let gpuIndex: number | null = session.gpu_index;
   if (gpuIndex === null) {
-    throw new SessionError(503, "No free GPU available");
+    const assignedGpus = db.getAssignedGpuIndexes();
+    gpuIndex = await findFreeGpu(assignedGpus);
+    // null is fine — not all sessions need a GPU
   }
 
   // Create worktree if needed
@@ -252,7 +253,7 @@ export async function restartSession(id: string): Promise<Session> {
   const tmuxName = await pm.spawnSession({
     tag: session.tag,
     worktreePath,
-    gpuIndex,
+    gpuIndex: gpuIndex ?? -1,
     agentType: session.agent_type,
     programMd: session.program_md ?? session.strategy,
   });

@@ -44,13 +44,15 @@ export async function spawnSession(config: SpawnConfig): Promise<string> {
     config.worktreePath
   );
 
-  await tmux(
-    "set-environment",
-    "-t",
-    tmuxName,
-    "CUDA_VISIBLE_DEVICES",
-    String(config.gpuIndex)
-  );
+  if (config.gpuIndex >= 0) {
+    await tmux(
+      "set-environment",
+      "-t",
+      tmuxName,
+      "CUDA_VISIBLE_DEVICES",
+      String(config.gpuIndex)
+    );
+  }
 
   const command =
     config.agentCommand ??
@@ -63,7 +65,9 @@ export async function spawnSession(config: SpawnConfig): Promise<string> {
     );
   }
 
-  const fullCommand = `CUDA_VISIBLE_DEVICES=${config.gpuIndex} ${command}`;
+  const fullCommand = config.gpuIndex >= 0
+    ? `CUDA_VISIBLE_DEVICES=${config.gpuIndex} ${command}`
+    : command;
   await tmux("send-keys", "-t", tmuxName, fullCommand, "Enter");
 
   return tmuxName;
