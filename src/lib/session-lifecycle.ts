@@ -190,11 +190,86 @@ export async function resumeSession(id: string): Promise<Session> {
     );
   }
 
-  if (session.tmux_session) {
-    await pm.resumeSession(session.tmux_session);
+  if (!session.tmux_session) {
+    throw new SessionError(
+      409,
+      "No process to resume. Use restart to spawn a new agent."
+    );
   }
 
+  await pm.resumeSession(session.tmux_session);
+
   const updated = db.updateSession(id, { status: "running" });
+  broker.broadcast({
+    type: "session-status",
+    sessionId: id,
+    status: "running",
+  });
+
+  return updated ?? session;
+}
+
+export async function restartSession(id: string): Promise<Session> {
+  const session = db.getSession(id);
+  if (!session) throw new SessionError(404, "Session not found");
+  if (session.status !== "paused" && session.status !== "killed" && session.status !== "failed") {
+    throw new SessionError(
+      409,
+      `Cannot restart session in ${session.status} state`
+    );
+  }
+
+  // Kill existing tmux if lingering
+  if (session.tmux_session) {
+    try {
+      await pm.killSession(session.tmux_session);
+    } catch {
+      /* best effort cleanup */
+    }
+  }
+
+  // Stop existing watcher if any
+  const watcher = activeWatchers.get(id);
+  if (watcher) {
+    watcher.stop();
+    activeWatchers.delete(id);
+  }
+
+  // Find a free GPU
+  const assignedGpus = db.getAssignedGpuIndexes();
+  const gpuIndex = await findFreeGpu(assignedGpus);
+  if (gpuIndex === null) {
+    throw new SessionError(503, "No free GPU available");
+  }
+
+  // Create worktree if needed
+  let worktreePath = session.worktree_path;
+  if (!worktreePath) {
+    worktreePath = await git.createWorktree(REPO_PATH, WORKTREE_DIR, session.tag);
+  }
+
+  // Spawn fresh agent
+  const tmuxName = await pm.spawnSession({
+    tag: session.tag,
+    worktreePath,
+    gpuIndex,
+    agentType: session.agent_type,
+    programMd: session.program_md ?? session.strategy,
+  });
+
+  // Start watcher
+  const handle = watchSession(id, worktreePath, onNewExperiments);
+  activeWatchers.set(id, handle);
+
+  const updated = db.updateSession(id, {
+    status: "running",
+    gpu_index: gpuIndex,
+    worktree_path: worktreePath,
+    tmux_session: tmuxName,
+    started_at: session.started_at ?? Date.now(),
+    finished_at: null,
+  });
+
   broker.broadcast({
     type: "session-status",
     sessionId: id,

@@ -3,6 +3,7 @@ import * as db from "@/lib/db";
 import {
   pauseSession,
   resumeSession,
+  restartSession,
   killSession,
   deleteSessionById,
   SessionError,
@@ -39,9 +40,9 @@ export async function PATCH(
   }
 
   const action = body.action;
-  if (action !== "pause" && action !== "resume" && action !== "kill") {
+  if (action !== "pause" && action !== "resume" && action !== "restart" && action !== "kill") {
     return NextResponse.json(
-      { error: 'Invalid action. Must be "pause", "resume", or "kill".' },
+      { error: 'Invalid action. Must be "pause", "resume", "restart", or "kill".' },
       { status: 400 }
     );
   }
@@ -54,6 +55,9 @@ export async function PATCH(
         break;
       case "resume":
         session = await resumeSession(id);
+        break;
+      case "restart":
+        session = await restartSession(id);
         break;
       case "kill":
         session = await killSession(id);

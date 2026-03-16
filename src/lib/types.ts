@@ -94,7 +94,7 @@ export interface CreateSessionInput {
 }
 
 export interface PatchSessionInput {
-  action: "pause" | "resume" | "kill";
+  action: "pause" | "resume" | "restart" | "kill";
 }
 
 export interface ForkSessionInput {

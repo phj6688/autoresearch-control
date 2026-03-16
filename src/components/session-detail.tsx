@@ -43,11 +43,19 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
     session.status
   );
 
+  const isOrphan = !session.tmux_session;
+
   const handleAction = useCallback(
-    async (action: "pause" | "resume" | "kill") => {
+    async (action: "pause" | "resume" | "restart" | "kill") => {
       if (action === "kill") {
         const confirmed = window.confirm(
           `Kill session "${session.tag}"? The worktree will be preserved.`
+        );
+        if (!confirmed) return;
+      }
+      if (action === "restart") {
+        const confirmed = window.confirm(
+          `Restart session "${session.tag}"? This will spawn a fresh agent process.`
         );
         if (!confirmed) return;
       }
@@ -176,7 +184,7 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
               {loading === "pause" ? "..." : "Pause"}
             </button>
           )}
-          {session.status === "paused" && (
+          {session.status === "paused" && !isOrphan && (
             <button
               disabled={loading !== null}
               onClick={() => void handleAction("resume")}
@@ -188,6 +196,20 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
             >
               <PlayIcon size={12} />
               {loading === "resume" ? "..." : "Resume"}
+            </button>
+          )}
+          {(session.status === "paused" || session.status === "killed" || session.status === "failed") && isOrphan && (
+            <button
+              disabled={loading !== null}
+              onClick={() => void handleAction("restart")}
+              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-colors disabled:opacity-50"
+              style={{
+                backgroundColor: "var(--color-status-running-bg)",
+                color: "var(--color-status-running-text)",
+              }}
+            >
+              <PlayIcon size={12} />
+              {loading === "restart" ? "..." : "Restart"}
             </button>
           )}
           {(session.status === "running" || session.status === "paused") && (
