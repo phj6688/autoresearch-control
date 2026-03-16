@@ -9,7 +9,7 @@ const execFileAsync = promisify(execFile);
 
 const AGENT_COMMANDS: Record<string, string> = {
   "claude-code":
-    'claude --model claude-opus-4-6 --print "Read program.md and begin autonomous experimentation. Setup first, then run experiments continuously."',
+    'claude --model claude-opus-4-6 --print --allowedTools "Bash(command:*),Read,Write,Edit,Glob,Grep" -p "Read program.md and begin autonomous experimentation. Setup first, then run experiments continuously."',
   codex: "codex --model o4-mini --auto-edit --full-auto",
   aider: "aider --model claude-3.5-sonnet train.py",
 };
