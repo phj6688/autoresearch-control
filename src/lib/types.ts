@@ -161,3 +161,36 @@ export interface ParsedExperiment {
   val_bpb: number;
   peak_vram_mb: number | null;
 }
+
+export type ActivityType =
+  | "modifying"
+  | "experimenting"
+  | "evaluating"
+  | "thinking"
+  | "committing"
+  | "error"
+  | "reading"
+  | "idle";
+
+export interface ActivityEvent {
+  ts: number;
+  type: ActivityType;
+  message: string;
+}
+
+export type ActivityStatus =
+  | "experimenting"
+  | "modifying"
+  | "evaluating"
+  | "thinking"
+  | "idle"
+  | "error";
+
+export interface ActivitySnapshot {
+  status: ActivityStatus;
+  summary: string;
+  events: ActivityEvent[];
+  rawOutput: string;
+  modifiedFiles: string[];
+  lastActivityAt: number;
+}

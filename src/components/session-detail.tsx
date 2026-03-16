@@ -3,11 +3,14 @@
 import { useCallback, useState } from "react";
 import type { Session, Experiment } from "@/lib/types";
 import { useSessionStore } from "@/stores/session-store";
+import { apiUrl } from "@/lib/base-path";
 import { StatusBadge } from "./status-badge";
 import { ExperimentTimeline } from "./experiment-timeline";
 import { CommitFeed } from "./commit-feed";
 import { CodeHeatmap } from "./code-heatmap";
 import { PauseIcon, PlayIcon, StopIcon, ForkIcon } from "./icons";
+import { ActivityPanel } from "./activity-panel";
+import { useActivityPoll } from "@/hooks/use-activity-poll";
 import { formatMetricValue, formatDelta, metricLabel } from "@/lib/metric-utils";
 
 function formatElapsed(startedAt: number | null): string {
@@ -35,6 +38,10 @@ interface SessionDetailProps {
 export function SessionDetail({ session, experiments, onFork }: SessionDetailProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const updateSessionStatus = useSessionStore((s) => s.updateSessionStatus);
+  const { activity, error: activityError } = useActivityPoll(
+    session.id,
+    session.status
+  );
 
   const handleAction = useCallback(
     async (action: "pause" | "resume" | "kill") => {
@@ -47,7 +54,7 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
 
       setLoading(action);
       try {
-        const res = await fetch(`/api/sessions/${session.id}`, {
+        const res = await fetch(apiUrl(`/api/sessions/${session.id}`), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action }),
@@ -224,6 +231,15 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
       >
         {session.strategy}
       </div>
+
+      {/* Live Activity */}
+      {(session.status === "running" || session.status === "paused") && (
+        <ActivityPanel
+          activity={activity}
+          error={activityError}
+          isRunning={session.status === "running"}
+        />
+      )}
 
       {/* Metrics Row */}
       <div className="flex flex-wrap gap-3">
