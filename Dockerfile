@@ -20,8 +20,12 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     tmux \
-    && rm -rf /var/lib/apt/lists/* \
-    && git config --global safe.directory '*'
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for agent sessions (--dangerously-skip-permissions requires non-root)
+RUN useradd -m -s /bin/bash agent \
+    && git config --global safe.directory '*' \
+    && su - agent -c "git config --global safe.directory '*'"
 
 RUN corepack enable pnpm
 

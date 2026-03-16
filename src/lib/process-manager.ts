@@ -9,7 +9,7 @@ const execFileAsync = promisify(execFile);
 
 const AGENT_COMMANDS: Record<string, string> = {
   "claude-code":
-    'claude --model claude-opus-4-6 --print --allowedTools "Bash(command:*),Read,Write,Edit,Glob,Grep" -p "Read program.md and begin autonomous experimentation. Setup first, then run experiments continuously."',
+    'claude --model claude-opus-4-6 --print --dangerously-skip-permissions -p "Read program.md and begin autonomous experimentation. Setup first, then run experiments continuously."',
   codex: "codex --model o4-mini --auto-edit --full-auto",
   aider: "aider --model claude-3.5-sonnet train.py",
 };
@@ -35,6 +35,12 @@ export async function spawnSession(config: SpawnConfig): Promise<string> {
   const programPath = path.join(config.worktreePath, "program.md");
   await fs.writeFile(programPath, config.programMd, "utf-8");
 
+  // Ensure agent user can write to worktree and claude config
+  await execFileAsync("chown", ["-R", "agent:agent", config.worktreePath]);
+  try {
+    await execFileAsync("chown", ["-R", "agent:agent", "/home/agent/.claude", "/home/agent/.claude.json"]);
+  } catch { /* may not exist */ }
+
   await tmux(
     "new-session",
     "-d",
@@ -43,17 +49,6 @@ export async function spawnSession(config: SpawnConfig): Promise<string> {
     "-c",
     config.worktreePath
   );
-
-  if (config.gpuIndex >= 0) {
-    await tmux(
-      "set-environment",
-      "-t",
-      tmuxName,
-      "CUDA_VISIBLE_DEVICES",
-      String(config.gpuIndex)
-    );
-  }
-
 
   const command =
     config.agentCommand ??
@@ -66,9 +61,11 @@ export async function spawnSession(config: SpawnConfig): Promise<string> {
     );
   }
 
-  const fullCommand = config.gpuIndex >= 0
-    ? `CUDA_VISIBLE_DEVICES=${config.gpuIndex} ${command}`
-    : command;
+  // Run as non-root agent user (--dangerously-skip-permissions requires non-root)
+  const envPrefix = config.gpuIndex >= 0
+    ? `CUDA_VISIBLE_DEVICES=${config.gpuIndex} `
+    : "";
+  const fullCommand = `su - agent -c '${envPrefix}cd ${config.worktreePath} && ${command}'`;
   await tmux("send-keys", "-t", tmuxName, fullCommand, "Enter");
 
   return tmuxName;
