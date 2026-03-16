@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useSessionStore } from "@/stores/session-store";
+import { apiUrl } from "@/lib/base-path";
 import type { Session, GpuInfo, Experiment, SessionStatus } from "@/lib/types";
 
 async function fetchInitialData(
@@ -10,8 +11,8 @@ async function fetchInitialData(
 ): Promise<void> {
   try {
     const [sessionsRes, gpusRes] = await Promise.all([
-      fetch("/api/sessions"),
-      fetch("/api/gpus"),
+      fetch(apiUrl("/api/sessions")),
+      fetch(apiUrl("/api/gpus")),
     ]);
     if (sessionsRes.ok) {
       const sessions = (await sessionsRes.json()) as Session[];
@@ -35,7 +36,7 @@ export function useSSE(): void {
     void fetchInitialData(store.setSessions, store.setGpus);
 
     function connect() {
-      const es = new EventSource("/api/stream");
+      const es = new EventSource(apiUrl("/api/stream"));
       esRef.current = es;
 
       es.addEventListener("open", () => {

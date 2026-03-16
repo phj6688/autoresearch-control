@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSessionStore } from "@/stores/session-store";
+import { apiUrl } from "@/lib/base-path";
 import type { AgentType, MetricDirection, Session } from "@/lib/types";
 
 const AGENT_OPTIONS: Array<{ value: AgentType; label: string }> = [
@@ -150,7 +151,7 @@ export function NewSessionModal({
           body.seed_from = seedFrom.id;
         }
 
-        const res = await fetch("/api/sessions", {
+        const res = await fetch(apiUrl("/api/sessions"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -162,7 +163,7 @@ export function NewSessionModal({
           return;
         }
 
-        const listRes = await fetch("/api/sessions");
+        const listRes = await fetch(apiUrl("/api/sessions"));
         if (listRes.ok) {
           const sessions = (await listRes.json()) as Session[];
           setSessions(sessions);

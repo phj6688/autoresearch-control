@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Session, Experiment } from "@/lib/types";
 import { useSessionStore } from "@/stores/session-store";
+import { apiUrl } from "@/lib/base-path";
 import { ProgressChart } from "./progress-chart";
 import { formatMetricValue, metricLabel, deltaIsGood } from "@/lib/metric-utils";
 
@@ -55,7 +56,7 @@ export function ComparisonView() {
     await Promise.all(
       compared.map(async (s) => {
         try {
-          const res = await fetch(`/api/sessions/${s.id}/experiments?limit=2000`);
+          const res = await fetch(apiUrl(`/api/sessions/${s.id}/experiments?limit=2000`));
           if (res.ok) {
             const data = (await res.json()) as {
               experiments: Experiment[];

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useSSE } from "@/hooks/use-sse";
 import { useGpuPoll } from "@/hooks/use-gpu-poll";
 import { useSessionStore } from "@/stores/session-store";
+import { apiUrl } from "@/lib/base-path";
 import { SessionList } from "./session-list";
 import { SessionDetail } from "./session-detail";
 import { ComparisonView } from "./comparison-view";
@@ -148,7 +149,7 @@ function MainContent({
   const fetchExperiments = useCallback(async (id: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/sessions/${id}/experiments?limit=2000`);
+      const res = await fetch(apiUrl(`/api/sessions/${id}/experiments?limit=2000`));
       if (res.ok) {
         const data = (await res.json()) as {
           experiments: Experiment[];
