@@ -467,8 +467,8 @@ AUTORESEARCH_WORKTREE_DIR=/home/lumo/autoresearch-runs
 PORT=3100
 
 # Optional — Telegram alerts via LUMO's existing bot
-TELEGRAM_BOT_TOKEN=<your-lumo-bot-token>
-TELEGRAM_CHAT_ID=<your-homelab-group-chat-id>
+TELEGRAM_BOT_TOKEN=  # lumo bot token — see lumo/.env on homelab
+TELEGRAM_CHAT_ID=  # Peyman DM or homelab group chat ID
 ```
 
 Start it:
