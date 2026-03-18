@@ -46,7 +46,7 @@ Browser → Next.js 15 (SSR + API) → SQLite (WAL mode)
 
 ```bash
 # Clone and install
-git clone <repo-url> autoresearch-control
+git clone git@github.com:phj6688/autoresearch-control.git autoresearch-control
 cd autoresearch-control
 pnpm install
 
