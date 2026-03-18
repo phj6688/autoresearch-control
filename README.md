@@ -1,98 +1,229 @@
-# FORGE Package: Autoresearch Mission Control
+# Autoresearch Mission Control
 
-A complete FORGE-compliant spec + session prompt package for Claude Code to build a multi-session management UI for Karpathy's [autoresearch](https://github.com/karpathy/autoresearch).
+Self-hosted web UI for managing multiple concurrent [autoresearch](https://github.com/karpathy/autoresearch) sessions. Monitor experiments, compare metrics, track GPU usage, and chat with an AI assistant that understands your entire research context.
 
-## What's Inside
+## What It Does
+
+Mission Control orchestrates autonomous AI research agents running in tmux sessions. Each session has its own git worktree, GPU assignment, and experiment loop. The dashboard shows everything in real time via SSE.
+
+**Dashboard views:**
+- **Sessions** — live status, metrics, sparklines, experiment timeline, commit feed, code heatmap
+- **Analytics** — session health overview, restart counts, healthy/unhealthy status
+- **Events** — global event log with session and type filters
+- **Compare** — side-by-side session comparison with sortable columns
+
+**AI Assistant** — a chat drawer (toggle with the "Assistant" button) that can answer questions about any session, explain experiments in plain language, show live agent activity, and help write new session strategies. Powered by Claude via the Anthropic API.
+
+**Toast notifications** — experiment completion alerts that auto-dismiss and navigate to the relevant session on click.
+
+## Architecture
 
 ```
-TASKSPEC.md                  ← Canonical spec (700+ lines, frozen during execution)
-CLAUDE.md                    ← Agent rules (persistent across sessions)
-AUDIT.md                     ← Greenfield Risk Speculation Report
-.claude/settings.local.json  ← Tool permissions (full access)
-sessions/
-  session-1-prompt.md        ← Foundation: DB + types + scaffold
-  session-2-prompt.md        ← Backend: git, tmux, GPU, watchers
-  session-3-prompt.md        ← API routes + SSE
-  session-4-prompt.md        ← UI shell: layout, sidebar, cards
-  session-5-prompt.md        ← UI detail: charts, timeline, heatmap
-  session-6-prompt.md        ← Modal + Telegram + Docker + polish
-bootstrap.sh                 ← One-command project init
+Browser → Next.js 15 (SSR + API) → SQLite (WAL mode)
+                                      ↓
+                                tmux sessions → Claude Code / Codex / Aider / Gemini CLI
+                                      ↓
+                                git worktrees → code modifications
+                                      ↓
+                                results.tsv → fs.watch → SSE → Browser
+                                      ↓
+                                nvidia-smi → GPU status → Browser
 ```
 
-## Execution Protocol
+## Prerequisites
 
-### Prerequisites
-- Machine with NVIDIA GPU (for full functionality; UI still works without one)
-- Cloned autoresearch repo: `git clone https://github.com/karpathy/autoresearch`
-- Node.js 22+, pnpm 9+, tmux, git
-- Claude Code: `claude --model claude-opus-4-6`
+- **Node.js** 22+ (`node --version`)
+- **pnpm** 9+ (`pnpm --version`)
+- **tmux** (`tmux -V`)
+- **git** (`git --version`)
+- **Docker + Docker Compose** (for containerized deployment)
+- **Claude Code CLI** (for running agents: `claude --version`)
+- GPU with `nvidia-smi` or AMD ROCm (optional — UI works without one)
 
-### Steps
+## Quick Start
+
+### Local Development
 
 ```bash
-# 1. Bootstrap
-chmod +x bootstrap.sh && ./bootstrap.sh
+# Clone and install
+git clone <repo-url> autoresearch-control
 cd autoresearch-control
+pnpm install
 
-# 2. Launch Claude Code
-claude --model claude-opus-4-6
+# Configure environment
+cp .env.example .env
+# Edit .env — set AUTORESEARCH_REPO_PATH, AUTORESEARCH_WORKTREE_DIR, ANTHROPIC_API_KEY
 
-# 3. Execute sessions sequentially
-#    Paste session-1-prompt.md → build → verify gates → /clear
-#    Paste session-2-prompt.md → build → verify gates → /clear
-#    ... repeat through session 6
-
-# 4. After all sessions pass:
-docker compose up -d
+# Run dev server (port 3200)
+pnpm dev
 ```
 
-### Between Sessions
-- `/compact` at ~50% context usage within a session
-- `/clear` between every session (clean slate)
-- **YOU** run the verification gates — not the agent
-- If a gate fails: stop, diagnose, give corrective prompt, re-verify
+Open `http://localhost:3200/proxy/autoresearch`
 
-### If Something Breaks Mid-Session
+### Docker (Production)
 
-Paste this format into Claude Code:
-```
-STOP. [Exact error output].
-Root cause: [what you think caused it].
-Fix: [what needs to change].
-Verify: [specific command that must pass before continuing].
-Do not touch anything else.
+```bash
+# Build and run
+docker compose up -d --build --force-recreate
+
+# Verify
+curl http://localhost:3200/proxy/autoresearch/api/health
 ```
 
-### If the Spec Is Wrong
+Never use `docker compose restart` — it uses stale images. Always `docker compose up -d --build --force-recreate`.
 
-Don't edit TASKSPEC.md directly during execution. Instead:
-1. Stop execution
-2. Add `## ADDENDUM — SPEC CORRECTION [date]` to TASKSPEC.md
-3. Regenerate affected session prompts
-4. Re-execute from the correction point
+## Commands
 
-## Estimated Execution Time
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Dev server on `:3200` |
+| `pnpm build` | Production build |
+| `pnpm start` | Start production server |
+| `pnpm typecheck` | Run `tsc --noEmit` |
+| `pnpm lint` | Run ESLint |
 
-| Session | Estimated Time | Complexity |
-|---------|---------------|------------|
-| 1. Foundation | 15-20 min | Simple |
-| 2. Backend Core | 30-40 min | Complex (process mgmt) |
-| 3. API Routes | 25-35 min | Moderate |
-| 4. UI Shell | 25-35 min | Moderate |
-| 5. UI Detail | 35-45 min | Complex (D3 charts) |
-| 6. Polish + Docker | 30-40 min | Moderate |
-| **Total** | **~3-4 hours** | |
+## Environment Variables
 
-## Architecture Summary
+### Required
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `AUTORESEARCH_REPO_PATH` | Path to cloned autoresearch repo | `/home/user/autoresearch` |
+| `AUTORESEARCH_WORKTREE_DIR` | Directory for git worktrees | `/home/user/autoresearch-runs` |
+| `ANTHROPIC_API_KEY` | Anthropic API key (for AI assistant) | `sk-ant-...` |
+
+### Optional
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3200` | Server port |
+| `HOSTNAME` | `0.0.0.0` | Bind address |
+| `DEFAULT_AGENT` | `claude-code` | Default agent type for new sessions |
+| `DEFAULT_AGENT_COMMAND` | `claude --model claude-opus-4-6` | Command to spawn agents |
+| `ASSISTANT_MODEL` | `claude-sonnet-4-20250514` | Claude model for the chat assistant |
+| `TELEGRAM_BOT_TOKEN` | _(empty)_ | Telegram bot token for alerts |
+| `TELEGRAM_CHAT_ID` | _(empty)_ | Telegram chat ID for alerts |
+
+## Folder Structure
 
 ```
-Browser → Next.js (SSR + API) → SQLite (metadata)
-                                  ↓
-                            tmux sessions → Claude Code / Codex / Aider agents
-                                  ↓
-                            git worktrees → train.py modifications
-                                  ↓
-                            results.tsv → fs.watch → SSE → Browser
-                                  ↓
-                            nvidia-smi → GPU status → Browser
+autoresearch-control/
+├── src/
+│   ├── app/                        # Next.js App Router
+│   │   ├── api/
+│   │   │   ├── chat/               # AI assistant endpoints
+│   │   │   │   ├── route.ts        #   POST — streaming chat with Claude
+│   │   │   │   └── conversations/  #   GET/DELETE conversation history
+│   │   │   ├── sessions/           # Session CRUD + actions
+│   │   │   │   ├── route.ts        #   GET list, POST create
+│   │   │   │   └── [id]/           #   PATCH actions, DELETE, experiments, events, activity, fork
+│   │   │   ├── stream/             # SSE endpoint (real-time updates)
+│   │   │   ├── gpus/               # GPU status
+│   │   │   ├── health/             # Health check + detailed status
+│   │   │   └── events/             # Global event log
+│   │   ├── layout.tsx              # Root layout
+│   │   ├── page.tsx                # Dashboard entry
+│   │   └── globals.css             # Theme CSS variables
+│   ├── components/
+│   │   ├── dashboard.tsx           # Main layout — header, tabs, stats, sidebar, content
+│   │   ├── session-list.tsx        # Sidebar session cards + GPU bar
+│   │   ├── session-detail.tsx      # Session view — metrics, timeline, actions
+│   │   ├── session-card.tsx        # Mini session card with sparkline
+│   │   ├── chat-drawer.tsx         # AI assistant slide-out panel
+│   │   ├── chat-message.tsx        # Chat message bubble
+│   │   ├── toast-container.tsx     # Experiment completion notifications
+│   │   ├── new-session-modal.tsx   # Create/fork session form
+│   │   ├── experiment-timeline.tsx # D3 experiment chart
+│   │   ├── comparison-view.tsx     # Multi-session comparison table
+│   │   ├── analytics-view.tsx      # Session health dashboard
+│   │   ├── events-view.tsx         # Global event log with filters
+│   │   ├── activity-panel.tsx      # Live activity status + event feed
+│   │   ├── tab-navigation.tsx      # Sessions/Analytics/Events/Compare tabs
+│   │   └── error-boundary.tsx      # Error boundary wrapper
+│   ├── hooks/
+│   │   ├── use-sse.ts              # SSE connection + event dispatch
+│   │   ├── use-chat.ts             # Chat message state + POST SSE stream parsing
+│   │   ├── use-activity-poll.ts    # Activity polling for running sessions
+│   │   └── use-gpu-poll.ts         # GPU status polling
+│   ├── lib/
+│   │   ├── db.ts                   # SQLite singleton, schema, CRUD operations
+│   │   ├── chat-db.ts              # Chat conversation + message operations
+│   │   ├── chat-context.ts         # Tiered context assembly for AI assistant
+│   │   ├── session-lifecycle.ts    # Create/pause/resume/kill sessions via tmux
+│   │   ├── process-manager.ts      # tmux process management
+│   │   ├── git.ts                  # Git worktree operations with mutex locks
+│   │   ├── gpu.ts                  # nvidia-smi / ROCm GPU detection
+│   │   ├── watcher.ts              # results.tsv file watcher per session
+│   │   ├── health-agent.ts         # Background health checker (30s interval)
+│   │   ├── sse-broker.ts           # SSE pub/sub with 15s heartbeat
+│   │   ├── activity-parser.ts      # tmux output → activity status
+│   │   ├── results-parser.ts       # results.tsv → experiment records
+│   │   ├── base-path.ts            # basePath utility for fetch URLs
+│   │   ├── types.ts                # Shared TypeScript types
+│   │   └── metric-utils.ts         # Metric formatting + comparison
+│   └── stores/
+│       ├── session-store.ts        # Zustand — sessions, selection, GPUs, view
+│       ├── chat-store.ts           # Zustand — drawer state, toasts
+│       └── events-store.ts         # Zustand — global events
+├── data/                           # SQLite database (auto-created)
+├── maestro/                        # E2E browser tests
+│   ├── flows/                      #   YAML test flows
+│   └── run.sh                      #   Test runner (headless Chrome via Xvfb)
+├── docs/                           # Design specs and implementation plans
+├── docker-compose.yml              # Container orchestration (host networking)
+├── Dockerfile                      # Multi-stage build (node:22-bookworm)
+├── next.config.ts                  # basePath: /proxy/autoresearch, standalone output
+├── CLAUDE.md                       # Agent coding rules
+└── TASKSPEC.md                     # Original specification
 ```
+
+## API Routes
+
+### Sessions
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/api/sessions` | List all sessions |
+| `POST` | `/api/sessions` | Create new session |
+| `PATCH` | `/api/sessions/[id]` | Session action (pause/resume/restart/kill) |
+| `DELETE` | `/api/sessions/[id]` | Delete session |
+| `GET` | `/api/sessions/[id]/experiments` | List experiments |
+| `GET` | `/api/sessions/[id]/events` | Session event history |
+| `GET` | `/api/sessions/[id]/activity` | Live activity snapshot |
+| `POST` | `/api/sessions/[id]/fork` | Fork session |
+
+### Chat (AI Assistant)
+| Method | Route | Description |
+|--------|-------|-------------|
+| `POST` | `/api/chat` | Send message, get streaming response |
+| `GET` | `/api/chat/conversations` | List conversations |
+| `GET` | `/api/chat/conversations/[id]` | Get conversation messages |
+| `DELETE` | `/api/chat/conversations/[id]` | Delete conversation |
+
+### System
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/api/gpus` | GPU status |
+| `GET` | `/api/health` | Health check |
+| `GET` | `/api/health/status` | Detailed health status |
+| `GET` | `/api/events` | Global event log |
+| `GET` | `/api/stream` | SSE real-time updates |
+
+All API routes are prefixed with the basePath: `/proxy/autoresearch/api/...`
+
+## E2E Tests
+
+Maestro YAML-based browser tests run against the live app:
+
+```bash
+# Run all tests
+./maestro/run.sh
+
+# Run a single test
+./maestro/run.sh maestro/flows/01-app-loads.yaml
+```
+
+Requires Java (`~/.local/jdk`) and Maestro CLI (`~/.maestro/bin`). Uses headless Chrome via Xvfb.
+
+## License
+
+Private — not open source.
