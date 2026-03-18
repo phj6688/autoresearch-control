@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useSessionStore } from "@/stores/session-store";
 import { useEventsStore } from "@/stores/events-store";
+import { useChatStore } from "@/stores/chat-store";
 import { apiUrl } from "@/lib/base-path";
 import type { Session, GpuInfo, Experiment, SessionStatus, SessionEvent } from "@/lib/types";
 
@@ -55,6 +56,20 @@ export function useSSE(): void {
           experiment: Experiment;
         };
         useSessionStore.getState().addExperiment(data.sessionId, data.experiment);
+        // Toast notification for experiment completion
+        const session = useSessionStore.getState().sessions.find(
+          (s) => s.id === data.sessionId
+        );
+        const metricVal = data.experiment.val_bpb?.toFixed(2) ?? "?";
+        const delta = data.experiment.delta;
+        const deltaStr = delta !== null && delta !== undefined
+          ? ` (${delta > 0 ? "+" : ""}${delta.toFixed(2)})`
+          : "";
+        useChatStore.getState().addToast({
+          sessionId: data.sessionId,
+          sessionTag: session?.tag ?? data.sessionId,
+          message: `Exp #${data.experiment.run_number} — ${metricVal}${deltaStr}`,
+        });
       });
 
       es.addEventListener("session-status", (e) => {
