@@ -11,6 +11,8 @@ services:
     - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
     - DEFAULT_AGENT=${DEFAULT_AGENT:-claude-code}
     - DEFAULT_AGENT_COMMAND=${DEFAULT_AGENT_COMMAND:-claude --model claude-opus-4-6}
+    - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    - ASSISTANT_MODEL=${ASSISTANT_MODEL:-claude-sonnet-4-20250514}
     network_mode: host
     ports:
     - 3200:3200
