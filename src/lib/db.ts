@@ -4,6 +4,7 @@ import fs from "node:fs";
 import { nanoid } from "nanoid";
 import type {
   Session,
+  SessionEvent,
   Experiment,
   CreateSessionInput,
 } from "./types";
@@ -88,7 +89,23 @@ function createSchema(db: Database.Database): void {
       sent            INTEGER NOT NULL DEFAULT 0,
       created_at      INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
     );
+
+    CREATE TABLE IF NOT EXISTS session_events (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id      TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+      type            TEXT NOT NULL,
+      message         TEXT NOT NULL,
+      details         TEXT,
+      created_at      INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+    );
+    CREATE INDEX IF NOT EXISTS idx_session_events_session ON session_events(session_id);
+    CREATE INDEX IF NOT EXISTS idx_session_events_type ON session_events(type);
   `);
+
+  try { db.exec(`ALTER TABLE sessions ADD COLUMN last_output_snapshot TEXT`); } catch { /* exists */ }
+  try { db.exec(`ALTER TABLE sessions ADD COLUMN last_summary TEXT`); } catch { /* exists */ }
+  try { db.exec(`ALTER TABLE sessions ADD COLUMN restart_count INTEGER DEFAULT 0`); } catch { /* exists */ }
+  try { db.exec(`ALTER TABLE sessions ADD COLUMN last_restart_at INTEGER`); } catch { /* exists */ }
 }
 
 function withRetry<T>(fn: () => T): T {
@@ -171,6 +188,10 @@ export function updateSession(
       | "commit_count"
       | "started_at"
       | "finished_at"
+      | "last_output_snapshot"
+      | "last_summary"
+      | "restart_count"
+      | "last_restart_at"
     >
   >
 ): Session | undefined {
@@ -328,5 +349,89 @@ export function insertAlert(alert: {
     db.prepare(
       `INSERT INTO alerts (session_id, type, message, sent) VALUES (?, ?, ?, ?)`
     ).run(alert.session_id, alert.type, alert.message, alert.sent);
+  });
+}
+
+export function insertSessionEvent(event: {
+  session_id: string;
+  type: string;
+  message: string;
+  details?: string | null;
+}): SessionEvent {
+  const db = getDb();
+  return withRetry(() => {
+    const result = db
+      .prepare(
+        `INSERT INTO session_events (session_id, type, message, details) VALUES (?, ?, ?, ?)`
+      )
+      .run(
+        event.session_id,
+        event.type,
+        event.message,
+        event.details ?? null
+      );
+    return db
+      .prepare("SELECT * FROM session_events WHERE id = ?")
+      .get(result.lastInsertRowid) as SessionEvent;
+  });
+}
+
+export function listSessionEvents(filters?: {
+  session_id?: string;
+  type?: string;
+  limit?: number;
+  offset?: number;
+}): SessionEvent[] {
+  const db = getDb();
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (filters?.session_id) {
+    conditions.push("session_id = ?");
+    params.push(filters.session_id);
+  }
+  if (filters?.type) {
+    conditions.push("type = ?");
+    params.push(filters.type);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const limit = filters?.limit ?? 100;
+  const offset = filters?.offset ?? 0;
+  params.push(limit, offset);
+
+  return withRetry(() =>
+    db
+      .prepare(
+        `SELECT * FROM session_events ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+      )
+      .all(...params) as SessionEvent[]
+  );
+}
+
+export function countSessionEvents(filters?: {
+  session_id?: string;
+  type?: string;
+}): number {
+  const db = getDb();
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (filters?.session_id) {
+    conditions.push("session_id = ?");
+    params.push(filters.session_id);
+  }
+  if (filters?.type) {
+    conditions.push("type = ?");
+    params.push(filters.type);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  return withRetry(() => {
+    const row = db
+      .prepare(`SELECT COUNT(*) as count FROM session_events ${where}`)
+      .get(...params) as { count: number };
+    return row.count;
   });
 }

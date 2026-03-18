@@ -31,6 +31,10 @@ export interface Session {
   updated_at: number;
   metric_name: string;
   metric_direction: MetricDirection;
+  last_output_snapshot: string | null;
+  last_summary: string | null;
+  restart_count: number;
+  last_restart_at: number | null;
 }
 
 export interface Experiment {
@@ -79,6 +83,7 @@ export type SSEEvent =
   | { type: "session-status"; sessionId: string; status: SessionStatus }
   | { type: "gpu-update"; gpus: GpuInfo[] }
   | { type: "alert"; alert: Alert }
+  | { type: "health-event"; event: SessionEvent }
   | { type: "heartbeat" };
 
 export interface CreateSessionInput {
@@ -193,4 +198,27 @@ export interface ActivitySnapshot {
   rawOutput: string;
   modifiedFiles: string[];
   lastActivityAt: number;
+}
+
+export type SessionEventType =
+  | "started"
+  | "orphan_detected"
+  | "auto_restarted"
+  | "restart_failed"
+  | "escalation_triggered"
+  | "escalation_resolved"
+  | "killed"
+  | "completed"
+  | "paused"
+  | "resumed"
+  | "experiment_recorded"
+  | "snapshot_captured";
+
+export interface SessionEvent {
+  id: number;
+  session_id: string;
+  type: SessionEventType;
+  message: string;
+  details: string | null;
+  created_at: number;
 }

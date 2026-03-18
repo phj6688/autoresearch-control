@@ -8,6 +8,7 @@ import { evaluateExperimentAlerts } from "./telegram";
 import { isBetter } from "./metric-utils";
 import type {
   Session,
+  SessionEventType,
   CreateSessionInput,
   ForkSessionInput,
   WatcherHandle,
@@ -18,6 +19,23 @@ const REPO_PATH = process.env.AUTORESEARCH_REPO_PATH ?? "";
 const WORKTREE_DIR = process.env.AUTORESEARCH_WORKTREE_DIR ?? "";
 
 const activeWatchers = new Map<string, WatcherHandle>();
+
+function logLifecycleEvent(
+  sessionId: string,
+  type: SessionEventType,
+  message: string
+): void {
+  try {
+    const event = db.insertSessionEvent({
+      session_id: sessionId,
+      type,
+      message,
+    });
+    broker.broadcast({ type: "health-event", event });
+  } catch {
+    /* best effort — never crash the main flow */
+  }
+}
 
 function onNewExperiments(
   sessionId: string,
@@ -56,6 +74,12 @@ function onNewExperiments(
       sessionId,
       experiment: inserted,
     });
+
+    logLifecycleEvent(
+      sessionId,
+      "experiment_recorded",
+      `Experiment #${exp.run_number}: ${session.metric_name}=${exp.val_bpb}`
+    );
   }
 
   evaluateExperimentAlerts(session, experiments);
@@ -107,6 +131,8 @@ async function promoteToRunning(
       sessionId: session.id,
       status: "running",
     });
+
+    logLifecycleEvent(session.id, "started", `Session started on GPU ${gpuIndex}`);
 
     return updated ?? session;
   } catch (err) {
@@ -177,6 +203,8 @@ export async function pauseSession(id: string): Promise<Session> {
     status: "paused",
   });
 
+  logLifecycleEvent(id, "paused", "Session paused");
+
   return updated ?? session;
 }
 
@@ -205,6 +233,8 @@ export async function resumeSession(id: string): Promise<Session> {
     sessionId: id,
     status: "running",
   });
+
+  logLifecycleEvent(id, "resumed", "Session resumed");
 
   return updated ?? session;
 }
@@ -311,6 +341,8 @@ export async function killSession(id: string): Promise<Session> {
     sessionId: id,
     status: "killed",
   });
+
+  logLifecycleEvent(id, "killed", "Session killed");
 
   void autoPromoteQueued();
 
