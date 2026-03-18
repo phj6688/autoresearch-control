@@ -16,6 +16,9 @@ import { EventsView } from "./events-view";
 import { HexIcon, PlusIcon } from "./icons";
 import type { Experiment, Session } from "@/lib/types";
 import { formatMetricValue, isBetter, metricLabel } from "@/lib/metric-utils";
+import { ChatDrawer } from "./chat-drawer";
+import { ToastContainer } from "./toast-container";
+import { useChatStore } from "@/stores/chat-store";
 
 function StatsBar() {
   const sessions = useSessionStore((s) => s.sessions);
@@ -255,6 +258,8 @@ export function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [forkSource, setForkSource] = useState<Session | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const toggleDrawer = useChatStore((s) => s.toggleDrawer);
+  const drawerOpen = useChatStore((s) => s.drawerOpen);
 
   const openNewModal = useCallback(() => {
     setForkSource(null);
@@ -311,6 +316,20 @@ export function Dashboard() {
 
         <div className="flex items-center gap-2">
           <button
+            type="button"
+            onClick={toggleDrawer}
+            className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors"
+            style={{
+              backgroundColor: drawerOpen ? "var(--color-accent)" : "transparent",
+              color: drawerOpen ? "var(--color-bg)" : "var(--color-text-secondary)",
+              borderWidth: 1,
+              borderColor: drawerOpen ? "var(--color-accent)" : "var(--color-border)",
+            }}
+          >
+            <span className="hidden sm:inline">Assistant</span>
+            <span className="sm:hidden">AI</span>
+          </button>
+          <button
             className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors"
             style={{
               backgroundColor: "var(--color-accent)",
@@ -358,6 +377,7 @@ export function Dashboard() {
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <MainContent onFork={openForkModal} />
         </main>
+        <ChatDrawer />
       </div>
 
       {/* New Session / Fork Modal */}
@@ -366,6 +386,7 @@ export function Dashboard() {
         onClose={closeModal}
         seedFrom={forkSource}
       />
+      <ToastContainer />
     </div>
   );
 }
