@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import type { ActivitySnapshot, ActivityType } from "@/lib/types";
 import {
   PencilIcon,
@@ -8,7 +8,6 @@ import {
   ChartIcon,
   BrainIcon,
   GitCommitIcon,
-  TerminalIcon,
   BookIcon,
   WarningIcon,
   ChevronIcon,
@@ -166,47 +165,6 @@ function EventFeed({ activity }: { activity: ActivitySnapshot }) {
   );
 }
 
-// --- Layer 3: Raw Terminal ---
-
-function RawTerminal({ rawOutput }: { rawOutput: string }) {
-  const preRef = useRef<HTMLPreElement>(null);
-
-  useEffect(() => {
-    if (preRef.current) {
-      preRef.current.scrollTop = preRef.current.scrollHeight;
-    }
-  }, [rawOutput]);
-
-  return (
-    <div className="mt-1">
-      <div className="flex items-center gap-1.5 px-1 py-1">
-        <TerminalIcon size={12} />
-        <span
-          className="text-xs font-semibold uppercase tracking-wider"
-          style={{ color: "var(--color-text-muted)" }}
-        >
-          Terminal Output
-        </span>
-      </div>
-      <pre
-        ref={preRef}
-        className="overflow-auto rounded border p-3 text-xs leading-relaxed"
-        style={{
-          borderColor: "var(--color-border)",
-          backgroundColor: "#0a0e1a",
-          color: "var(--color-text-secondary)",
-          maxHeight: "300px",
-          fontFamily: "var(--font-jetbrains-mono), monospace",
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-all",
-        }}
-      >
-        {rawOutput || "No output captured"}
-      </pre>
-    </div>
-  );
-}
-
 // --- Main exported component ---
 
 interface ActivityPanelProps {
@@ -219,7 +177,7 @@ export function ActivityPanel({ activity, error, isRunning }: ActivityPanelProps
   const [expandLevel, setExpandLevel] = useState(0);
 
   function toggleExpand() {
-    setExpandLevel((prev) => (prev >= 2 ? 0 : prev + 1));
+    setExpandLevel((prev) => (prev >= 1 ? 0 : 1));
   }
 
   if (error) {
@@ -266,7 +224,6 @@ export function ActivityPanel({ activity, error, isRunning }: ActivityPanelProps
         onToggle={toggleExpand}
       />
       {expandLevel >= 1 && <EventFeed activity={activity} />}
-      {expandLevel >= 2 && <RawTerminal rawOutput={activity.rawOutput} />}
     </div>
   );
 }
