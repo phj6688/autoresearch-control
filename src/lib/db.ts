@@ -22,7 +22,7 @@ function openDatabase(): Database.Database {
 
 let _db: Database.Database | undefined;
 
-function getDb(): Database.Database {
+export function getDb(): Database.Database {
   if (!_db) {
     _db = openDatabase();
     createSchema(_db);
@@ -102,13 +102,34 @@ function createSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_session_events_type ON session_events(type);
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS chat_conversations (
+      id          TEXT PRIMARY KEY,
+      title       TEXT,
+      created_at  INTEGER NOT NULL,
+      updated_at  INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS chat_messages (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      conversation_id  TEXT NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+      role             TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+      content          TEXT NOT NULL,
+      session_context  TEXT,
+      created_at       INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation
+      ON chat_messages(conversation_id);
+  `);
+
   try { db.exec(`ALTER TABLE sessions ADD COLUMN last_output_snapshot TEXT`); } catch { /* exists */ }
   try { db.exec(`ALTER TABLE sessions ADD COLUMN last_summary TEXT`); } catch { /* exists */ }
   try { db.exec(`ALTER TABLE sessions ADD COLUMN restart_count INTEGER DEFAULT 0`); } catch { /* exists */ }
   try { db.exec(`ALTER TABLE sessions ADD COLUMN last_restart_at INTEGER`); } catch { /* exists */ }
 }
 
-function withRetry<T>(fn: () => T): T {
+export function withRetry<T>(fn: () => T): T {
   const MAX_RETRIES = 3;
   const BACKOFF_MS = 100;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
