@@ -10,6 +10,9 @@ import { SessionDetail } from "./session-detail";
 import { ComparisonView } from "./comparison-view";
 import { NewSessionModal } from "./new-session-modal";
 import { ErrorBoundary } from "./error-boundary";
+import { TabNavigation } from "./tab-navigation";
+import { AnalyticsView } from "./analytics-view";
+import { EventsView } from "./events-view";
 import { HexIcon, PlusIcon } from "./icons";
 import type { Experiment, Session } from "@/lib/types";
 import { formatMetricValue, isBetter, metricLabel } from "@/lib/metric-utils";
@@ -186,6 +189,22 @@ function MainContent({
     );
   }
 
+  if (view === "analytics") {
+    return (
+      <ErrorBoundary fallbackLabel="Analytics">
+        <AnalyticsView />
+      </ErrorBoundary>
+    );
+  }
+
+  if (view === "events") {
+    return (
+      <ErrorBoundary fallbackLabel="Events">
+        <EventsView />
+      </ErrorBoundary>
+    );
+  }
+
   if (view === "dashboard" && selectedSession) {
     if (loading && experiments.length === 0) {
       return <LoadingSkeleton />;
@@ -232,7 +251,6 @@ export function Dashboard() {
   useGpuPoll();
 
   const view = useSessionStore((s) => s.view);
-  const setView = useSessionStore((s) => s.setView);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [forkSource, setForkSource] = useState<Session | null>(null);
@@ -292,40 +310,6 @@ export function Dashboard() {
         </div>
 
         <div className="flex items-center gap-2">
-          <div
-            className="hidden rounded border sm:flex"
-            style={{ borderColor: "var(--color-border)" }}
-          >
-            <button
-              className="px-3 py-1 text-xs font-semibold uppercase tracking-wide transition-colors"
-              style={{
-                backgroundColor:
-                  view === "dashboard" ? "var(--color-accent)" : "transparent",
-                color:
-                  view === "dashboard"
-                    ? "var(--color-bg)"
-                    : "var(--color-text-secondary)",
-              }}
-              onClick={() => setView("dashboard")}
-            >
-              Dashboard
-            </button>
-            <button
-              className="px-3 py-1 text-xs font-semibold uppercase tracking-wide transition-colors"
-              style={{
-                backgroundColor:
-                  view === "compare" ? "var(--color-accent)" : "transparent",
-                color:
-                  view === "compare"
-                    ? "var(--color-bg)"
-                    : "var(--color-text-secondary)",
-              }}
-              onClick={() => setView("compare")}
-            >
-              Compare
-            </button>
-          </div>
-
           <button
             className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors"
             style={{
@@ -341,13 +325,16 @@ export function Dashboard() {
         </div>
       </header>
 
+      {/* Tab Navigation */}
+      <TabNavigation />
+
       {/* Stats Bar */}
       <StatsBar />
 
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Mobile sidebar overlay */}
-        {sidebarOpen && (
+        {sidebarOpen && (view === "dashboard" || view === "compare") && (
           <div
             className="fixed inset-0 z-40 md:hidden"
             style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
@@ -355,16 +342,18 @@ export function Dashboard() {
           />
         )}
 
-        {/* Sidebar */}
-        <div
-          className={`${
-            sidebarOpen ? "fixed inset-y-0 left-0 z-50" : "hidden"
-          } md:relative md:block`}
-        >
-          <ErrorBoundary fallbackLabel="Session List">
-            <SessionList onSelectMobile={() => setSidebarOpen(false)} />
-          </ErrorBoundary>
-        </div>
+        {/* Sidebar — only for dashboard and compare views */}
+        {(view === "dashboard" || view === "compare") && (
+          <div
+            className={`${
+              sidebarOpen ? "fixed inset-y-0 left-0 z-50" : "hidden"
+            } md:relative md:block`}
+          >
+            <ErrorBoundary fallbackLabel="Session List">
+              <SessionList onSelectMobile={() => setSidebarOpen(false)} />
+            </ErrorBoundary>
+          </div>
+        )}
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <MainContent onFork={openForkModal} />

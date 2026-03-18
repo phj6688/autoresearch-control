@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import { useSessionStore } from "@/stores/session-store";
+import { useEventsStore } from "@/stores/events-store";
 import { apiUrl } from "@/lib/base-path";
-import type { Session, GpuInfo, Experiment, SessionStatus } from "@/lib/types";
+import type { Session, GpuInfo, Experiment, SessionStatus, SessionEvent } from "@/lib/types";
 
 async function fetchInitialData(
   setSessions: (s: Session[]) => void,
@@ -73,6 +74,16 @@ export function useSSE(): void {
           gpus: GpuInfo[];
         };
         useSessionStore.getState().setGpus(data.gpus);
+      });
+
+      es.addEventListener("health-event", (e) => {
+        const data = JSON.parse(e.data) as { type: "health-event"; event: SessionEvent };
+        useEventsStore.getState().prependEvent(data.event);
+        // Also re-fetch sessions since health events may change session status
+        void fetchInitialData(
+          useSessionStore.getState().setSessions,
+          useSessionStore.getState().setGpus
+        );
       });
 
       es.addEventListener("error", () => {

@@ -5,18 +5,19 @@ interface SessionStore {
   sessions: Session[];
   selectedId: string | null;
   compareIds: string[];
-  view: "dashboard" | "compare";
+  view: "dashboard" | "compare" | "analytics" | "events";
   gpus: GpuInfo[];
   connected: boolean;
 
   setSessions: (sessions: Session[]) => void;
   selectSession: (id: string | null) => void;
   toggleCompare: (id: string) => void;
-  setView: (view: "dashboard" | "compare") => void;
+  setView: (view: "dashboard" | "compare" | "analytics" | "events") => void;
   setGpus: (gpus: GpuInfo[]) => void;
   setConnected: (connected: boolean) => void;
   addExperiment: (sessionId: string, experiment: Experiment) => void;
   updateSessionStatus: (sessionId: string, status: SessionStatus) => void;
+  removeSession: (sessionId: string) => void;
 }
 
 export const useSessionStore = create<SessionStore>((set) => ({
@@ -76,5 +77,12 @@ export const useSessionStore = create<SessionStore>((set) => ({
       sessions: state.sessions.map((s) =>
         s.id === sessionId ? { ...s, status } : s
       ),
+    })),
+
+  removeSession: (sessionId) =>
+    set((state) => ({
+      sessions: state.sessions.filter((s) => s.id !== sessionId),
+      selectedId: state.selectedId === sessionId ? null : state.selectedId,
+      compareIds: state.compareIds.filter((id) => id !== sessionId),
     })),
 }));

@@ -8,8 +8,10 @@ import { StatusBadge } from "./status-badge";
 import { ExperimentTimeline } from "./experiment-timeline";
 import { CommitFeed } from "./commit-feed";
 import { CodeHeatmap } from "./code-heatmap";
-import { PauseIcon, PlayIcon, StopIcon, ForkIcon } from "./icons";
+import { PauseIcon, PlayIcon, StopIcon, ForkIcon, TrashIcon, WarningIcon } from "./icons";
 import { ActivityPanel } from "./activity-panel";
+import { OutputViewer } from "./output-viewer";
+import { SessionEventTimeline } from "./session-event-timeline";
 import { useActivityPoll } from "@/hooks/use-activity-poll";
 import { formatMetricValue, formatDelta, metricLabel } from "@/lib/metric-utils";
 
@@ -38,6 +40,7 @@ interface SessionDetailProps {
 export function SessionDetail({ session, experiments, onFork }: SessionDetailProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const updateSessionStatus = useSessionStore((s) => s.updateSessionStatus);
+  const removeSession = useSessionStore((s) => s.removeSession);
   const { activity, error: activityError } = useActivityPoll(
     session.id,
     session.status
@@ -77,6 +80,25 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
     },
     [session.id, session.tag, updateSessionStatus]
   );
+
+  const handleDelete = useCallback(async () => {
+    const confirmed = window.confirm(
+      `Delete session "${session.tag}"? This will remove the session record. The git worktree will NOT be deleted.`
+    );
+    if (!confirmed) return;
+
+    setLoading("delete");
+    try {
+      const res = await fetch(apiUrl(`/api/sessions/${session.id}`), {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        removeSession(session.id);
+      }
+    } finally {
+      setLoading(null);
+    }
+  }, [session.id, session.tag, removeSession]);
 
   const committed = experiments.filter((e) => e.committed !== 0);
   const hitRate =
@@ -169,6 +191,14 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
         >
           {formatElapsed(session.started_at)}
         </span>
+        {session.restart_count > 0 && (
+          <span
+            className="text-xs font-semibold tabular-nums"
+            style={{ color: "var(--color-warning)" }}
+          >
+            ↻ {session.restart_count} restart{session.restart_count > 1 ? "s" : ""}
+          </span>
+        )}
         <div className="ml-auto flex items-center gap-2">
           {session.status === "running" && (
             <button
@@ -240,8 +270,40 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
               Fork
             </button>
           )}
+          {(session.status === "killed" || session.status === "completed" || session.status === "failed" || session.status === "queued") && (
+            <button
+              disabled={loading !== null}
+              onClick={() => void handleDelete()}
+              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-colors disabled:opacity-50"
+              style={{
+                backgroundColor: "rgba(239, 68, 68, 0.1)",
+                color: "#ef4444",
+              }}
+              title="Delete this session record"
+            >
+              <TrashIcon size={12} />
+              {loading === "delete" ? "..." : "Delete"}
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Orphan warning banner */}
+      {session.status === "running" && isOrphan && (
+        <div
+          className="flex items-center gap-2 rounded border px-3 py-2 text-xs"
+          style={{
+            borderColor: "var(--color-warning)",
+            backgroundColor: "rgba(245, 158, 11, 0.1)",
+            color: "var(--color-warning)",
+          }}
+        >
+          <WarningIcon size={14} />
+          <span>
+            Session appears orphaned — no active process detected. Health agent will auto-restart.
+          </span>
+        </div>
+      )}
 
       {/* Strategy */}
       <div
@@ -262,6 +324,15 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
           isRunning={session.status === "running"}
         />
       )}
+
+      {/* Output viewer for dead sessions */}
+      {(session.status === "killed" || session.status === "failed" || session.status === "completed") &&
+        (session.last_summary !== null || session.last_output_snapshot !== null) && (
+          <OutputViewer
+            summary={session.last_summary}
+            rawOutput={session.last_output_snapshot}
+          />
+        )}
 
       {/* Metrics Row */}
       <div className="flex flex-wrap gap-3">
@@ -290,6 +361,9 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
           </div>
         ))}
       </div>
+
+      {/* Session Event Timeline */}
+      <SessionEventTimeline sessionId={session.id} />
 
       {/* Experiment Timeline */}
       <div>
