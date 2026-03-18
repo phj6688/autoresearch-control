@@ -5,3 +5,5 @@ data/
 *.tsbuildinfo
 next-env.d.ts
 .superpowers/
+.claude/
+maestro/
