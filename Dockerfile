@@ -20,10 +20,20 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     tmux \
+    curl \
+    python3 \
+    python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
+# Install uv (Python package manager) for agent experiments
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && mv /root/.local/bin/uv /usr/local/bin/uv \
+    && mv /root/.local/bin/uvx /usr/local/bin/uvx
+
 # Create non-root user for agent sessions (--dangerously-skip-permissions requires non-root)
-RUN useradd -m -s /bin/bash agent \
+# Add to video/render groups for GPU access (AMD ROCm)
+RUN groupadd -f video && groupadd -f render \
+    && useradd -m -s /bin/bash -G video,render agent \
     && git config --global safe.directory '*' \
     && su - agent -c "git config --global safe.directory '*'"
 

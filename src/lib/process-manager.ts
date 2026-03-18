@@ -62,8 +62,9 @@ export async function spawnSession(config: SpawnConfig): Promise<string> {
   }
 
   // Run as non-root agent user (--dangerously-skip-permissions requires non-root)
+  // Set both CUDA (NVIDIA) and ROCR (AMD) visibility — the irrelevant one is harmless
   const envPrefix = config.gpuIndex >= 0
-    ? `CUDA_VISIBLE_DEVICES=${config.gpuIndex} `
+    ? `CUDA_VISIBLE_DEVICES=${config.gpuIndex} ROCR_VISIBLE_DEVICES=${config.gpuIndex} HIP_VISIBLE_DEVICES=${config.gpuIndex} `
     : "";
   const fullCommand = `su - agent -c '${envPrefix}cd ${config.worktreePath} && ${command}'`;
   await tmux("send-keys", "-t", tmuxName, fullCommand, "Enter");

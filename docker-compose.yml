@@ -19,7 +19,16 @@ services:
     - ./data:/app/data
     - ${AUTORESEARCH_REPO_PATH:-./repo}:/repo
     - ${AUTORESEARCH_WORKTREE_DIR:-./worktrees}:/worktrees
+    - /home/lumo/docboost:/docboost
     - /sys/class/drm:/sys/class/drm:ro
-    - /home/peyman/.local/share/claude/versions/2.1.76:/usr/local/bin/claude:ro
+    - /dev/dri:/dev/dri
+    - /dev/kfd:/dev/kfd
+    - /home/peyman/.local/share/claude/versions/2.1.77:/usr/local/bin/claude:ro
     - /home/peyman/.claude:/home/agent/.claude
     - /home/peyman/.claude.json:/home/agent/.claude.json
+    devices:
+    - /dev/dri:/dev/dri
+    - /dev/kfd:/dev/kfd
+    group_add:
+    - video
+    - render
