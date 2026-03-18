@@ -1,0 +1,68 @@
+# Flow 08: Full UX journey — end-to-end user workflow
+# Combines all critical paths: load → navigate tabs → view session detail →
+# open/cancel modal → analytics → events → compare → return to dashboard
+# Apple/Google: responsive, immediate feedback, consistent navigation, no dead ends
+url: http://localhost:3200/proxy/autoresearch
+---
+- launchApp
+
+# ━━━ PHASE 1: Visual hierarchy — app shell renders ━━━
+- assertVisible: "AUTORESEARCH"
+- assertVisible: "Sessions"
+- assertVisible: "Analytics"
+- assertVisible: "Events"
+- assertVisible: "Compare"
+- assertVisible: "SESSIONS"
+- assertVisible: "EXPERIMENTS"
+- assertVisible: "docboost-f1"
+
+# ━━━ PHASE 2: Session detail — click session card in sidebar ━━━
+- tapOn:
+    point: 18%, 40%
+- extendedWaitUntil:
+    visible:
+      text: ".*Pause.*|.*Kill.*|.*Experiment Timeline.*"
+    timeout: 5000
+- assertVisible: "Pause"
+- assertVisible: "Kill"
+- assertVisible: "EXPERIMENTS"
+- assertVisible: "Experiment Timeline"
+
+# ━━━ PHASE 3: New session modal — open and dismiss ━━━
+- tapOn: "New Session"
+- extendedWaitUntil:
+    visible:
+      text: "Create Session"
+    timeout: 5000
+- assertVisible: "Tag"
+- assertVisible: "Strategy"
+- assertVisible: "Claude Code"
+- assertVisible: "Cancel"
+- tapOn: "Cancel"
+
+# ━━━ PHASE 4: Tab tour — each view loads correctly ━━━
+- tapOn: "Analytics"
+- extendedWaitUntil:
+    visible:
+      text: ".*ANALYTICS.*|.*HEALTHY.*"
+    timeout: 5000
+
+- tapOn: "Events"
+- extendedWaitUntil:
+    visible:
+      text: ".*event.*"
+    timeout: 5000
+
+- tapOn: "Compare"
+- extendedWaitUntil:
+    visible:
+      text: ".*COMPARISON.*|.*Session Comparison.*"
+    timeout: 5000
+
+# ━━━ PHASE 5: Return to dashboard — app is stable ━━━
+- tapOn: "Sessions"
+- assertVisible: "AUTORESEARCH"
+- assertVisible: "docboost-f1"
+- assertVisible: "New Session"
+
+# Full journey complete — all views reachable, all interactions responsive

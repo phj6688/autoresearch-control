@@ -1,0 +1,21 @@
+# Flow 06: Events view — event log renders with filters
+# Apple HIG: scannable lists, filter controls at top, clear timestamps
+url: http://localhost:3200/proxy/autoresearch
+---
+- launchApp
+
+# Navigate to Events
+- tapOn: "Events"
+
+# ── Event list loads ──
+- extendedWaitUntil:
+    visible:
+      text: ".*event.*"
+    timeout: 5000
+
+# ── Filter controls present ──
+- assertVisible: "All"
+
+# Navigate back to Sessions
+- tapOn: "Sessions"
+- assertVisible: "docboost-f1"

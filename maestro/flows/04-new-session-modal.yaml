@@ -1,0 +1,36 @@
+# Flow 04: New session modal — open, verify form, cancel
+# Apple HIG: modal focus, clear labels, cancel affordance, no data loss on dismiss
+url: http://localhost:3200/proxy/autoresearch
+---
+- launchApp
+- assertVisible: "New Session"
+
+# Open the modal
+- tapOn: "New Session"
+
+# ── Modal renders with form labels ──
+- extendedWaitUntil:
+    visible:
+      text: "Tag"
+    timeout: 5000
+- assertVisible: "Agent"
+- assertVisible: "Strategy"
+- assertVisible: "GPU"
+- assertVisible: "Metric"
+
+# ── Agent type options visible ──
+- assertVisible: "Claude Code"
+- assertVisible: "Codex"
+- assertVisible: "Aider"
+- assertVisible: "Gemini CLI"
+
+# ── Action buttons ──
+- assertVisible: "Cancel"
+- assertVisible: "Create Session"
+
+# ── Dismiss modal without creating ──
+- tapOn: "Cancel"
+
+# ── Back to main view ──
+- assertVisible: "AUTORESEARCH"
+- assertVisible: "docboost-f1"

@@ -1,0 +1,18 @@
+# Flow 07: Compare view — renders content or graceful error boundary
+# Apple HIG: every state (empty, loaded, error) has clear messaging
+url: http://localhost:3200/proxy/autoresearch
+---
+- launchApp
+
+# Navigate to Compare
+- tapOn: "Compare"
+
+# ── View renders (comparison or error boundary) ──
+- extendedWaitUntil:
+    visible:
+      text: ".*COMPARISON.*|.*Session Comparison.*"
+    timeout: 5000
+
+# Navigate back to Sessions
+- tapOn: "Sessions"
+- assertVisible: "docboost-f1"

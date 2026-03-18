@@ -1,0 +1,34 @@
+# Flow 02: Tab navigation — all four tabs respond and show content
+# Google Material: tabs respond immediately, content area updates on each switch
+url: http://localhost:3200/proxy/autoresearch
+---
+- launchApp
+- assertVisible: "Sessions"
+
+# ── Sessions tab (default active) ──
+- assertVisible: "docboost-f1"
+
+# ── Analytics tab ──
+- tapOn: "Analytics"
+- extendedWaitUntil:
+    visible:
+      text: ".*ANALYTICS.*"
+    timeout: 5000
+
+# ── Events tab ──
+- tapOn: "Events"
+- extendedWaitUntil:
+    visible:
+      text: ".*event.*"
+    timeout: 5000
+
+# ── Compare tab ──
+- tapOn: "Compare"
+- extendedWaitUntil:
+    visible:
+      text: ".*COMPARISON.*"
+    timeout: 5000
+
+# ── Back to Sessions ──
+- tapOn: "Sessions"
+- assertVisible: "docboost-f1"
