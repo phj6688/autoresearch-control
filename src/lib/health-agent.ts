@@ -81,10 +81,20 @@ async function checkSession(
       const session = db.getSession(sessionId);
       if (session) {
         const summary = generateHeuristicSummary(session, snapshot);
-        db.updateSession(sessionId, {
+        const updates: Record<string, unknown> = {
           last_output_snapshot: snapshot,
           last_summary: summary,
-        });
+        };
+        // Reset restart cooldown after the session has been stable
+        // longer than the cooldown window — gives a fresh restart budget
+        if (
+          session.last_restart_at &&
+          Date.now() - session.last_restart_at > RESTART_COOLDOWN_MS
+        ) {
+          updates.restart_count = 0;
+          updates.last_restart_at = null;
+        }
+        db.updateSession(sessionId, updates);
       }
     }
     return;

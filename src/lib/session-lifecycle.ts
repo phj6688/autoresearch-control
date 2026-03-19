@@ -299,6 +299,8 @@ export async function restartSession(id: string): Promise<Session> {
     tmux_session: tmuxName,
     started_at: session.started_at ?? Date.now(),
     finished_at: null,
+    restart_count: 0,
+    last_restart_at: null,
   });
 
   broker.broadcast({
@@ -306,6 +308,8 @@ export async function restartSession(id: string): Promise<Session> {
     sessionId: id,
     status: "running",
   });
+
+  logLifecycleEvent(id, "started", "Session restarted (restart state reset)");
 
   return updated ?? session;
 }
