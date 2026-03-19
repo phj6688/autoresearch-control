@@ -12,7 +12,7 @@ services:
     - DEFAULT_AGENT=${DEFAULT_AGENT:-claude-code}
     - DEFAULT_AGENT_COMMAND=${DEFAULT_AGENT_COMMAND:-claude --model claude-opus-4-6}
     - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-    - ASSISTANT_MODEL=${ASSISTANT_MODEL:-claude-sonnet-4-20250514}
+    - ASSISTANT_MODEL=${ASSISTANT_MODEL:-claude-haiku-4-5-20251001}
     network_mode: host
     ports:
     - 3200:3200
@@ -25,7 +25,7 @@ services:
     - /sys/class/drm:/sys/class/drm:ro
     - /dev/dri:/dev/dri
     - /dev/kfd:/dev/kfd
-    - /home/peyman/.local/share/claude/versions/2.1.77:/usr/local/bin/claude:ro
+    - /home/peyman/.local/bin/claude:/usr/local/bin/claude:ro
     - /home/peyman/.claude:/home/agent/.claude
     - /home/peyman/.claude.json:/home/agent/.claude.json
     devices:

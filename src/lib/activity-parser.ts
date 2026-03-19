@@ -158,6 +158,79 @@ function buildSummary(
   return parts.join(" — ");
 }
 
+// --- Process-based activity detection (fallback for --print mode) ---
+
+const PROCESS_ACTIVITY: Record<string, { type: ActivityType; message: string }> = {
+  python3: { type: "evaluating", message: "Running evaluation" },
+  python: { type: "evaluating", message: "Running evaluation" },
+  uv: { type: "evaluating", message: "Running evaluation (uv)" },
+  claude: { type: "thinking", message: "Agent is working" },
+  git: { type: "committing", message: "Git operation" },
+  node: { type: "experimenting", message: "Running experiment" },
+};
+
+async function detectProcessActivity(tmuxSession: string): Promise<ActivityEvent | null> {
+  try {
+    const { stdout: panePid } = await execFileAsync("tmux", [
+      "list-panes", "-t", tmuxSession, "-F", "#{pane_pid}",
+    ], { timeout: 5000 });
+
+    const rootPid = panePid.trim().split("\n")[0];
+    if (!rootPid) return null;
+
+    // Walk the process tree to find meaningful child processes
+    const { stdout: psOutput } = await execFileAsync("bash", [
+      "-c",
+      `cat /proc/*/status 2>/dev/null | awk '/^Name:/{name=$2} /^PPid:/{ppid=$2} /^Pid:/{pid=$2; if(pid && name) print pid, ppid, name; name=""; pid=""; ppid=""}'`,
+    ], { timeout: 5000 });
+
+    // Build parent→children map and find descendants of the pane PID
+    const processes: Array<{ pid: string; ppid: string; name: string }> = [];
+    for (const line of psOutput.trim().split("\n")) {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length >= 3) {
+        processes.push({ pid: parts[0], ppid: parts[1], name: parts[2] });
+      }
+    }
+
+    // Find all descendants of rootPid
+    const descendants = new Set<string>();
+    const queue = [rootPid];
+    while (queue.length > 0) {
+      const current = queue.pop()!;
+      for (const p of processes) {
+        if (p.ppid === current && !descendants.has(p.pid)) {
+          descendants.add(p.pid);
+          queue.push(p.pid);
+        }
+      }
+    }
+
+    // Find the deepest meaningful process
+    let bestMatch: { type: ActivityType; message: string } | null = null;
+    for (const p of processes) {
+      if (descendants.has(p.pid) && PROCESS_ACTIVITY[p.name]) {
+        bestMatch = PROCESS_ACTIVITY[p.name];
+      }
+    }
+
+    if (bestMatch) {
+      return { ts: Date.now(), type: bestMatch.type, message: bestMatch.message };
+    }
+
+    // If claude is a descendant but no deeper match, it's thinking
+    for (const p of processes) {
+      if (descendants.has(p.pid) && p.name === "claude") {
+        return { ts: Date.now(), type: "thinking", message: "Agent is thinking..." };
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // --- Main export ---
 
 export async function captureActivity(
@@ -169,7 +242,17 @@ export async function captureActivity(
     worktreePath ? getModifiedFiles(worktreePath) : Promise.resolve([]),
   ]);
 
-  const events = parseEvents(rawOutput);
+  let events = parseEvents(rawOutput);
+
+  // Fallback: if no events from tmux output (e.g. --print mode),
+  // detect activity from the process tree
+  if (events.length === 0) {
+    const processEvent = await detectProcessActivity(tmuxSession);
+    if (processEvent) {
+      events = [processEvent];
+    }
+  }
+
   const status = deriveStatus(events);
   const summary = buildSummary(status, events, modifiedFiles);
   const lastActivityAt = events.length > 0
