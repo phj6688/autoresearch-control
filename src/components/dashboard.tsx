@@ -153,8 +153,10 @@ function LoadingSkeleton() {
 
 function MainContent({
   onFork,
+  onNewSession,
 }: {
   onFork: (session: Session) => void;
+  onNewSession: () => void;
 }) {
   const view = useSessionStore((s) => s.view);
   const selectedId = useSessionStore((s) => s.selectedId);
@@ -235,18 +237,48 @@ function MainContent({
     );
   }
 
+  const allSessions = sessions;
+  const runningCount = allSessions.filter((s) => s.status === "running").length;
+  const pausedCount = allSessions.filter((s) => s.status === "paused").length;
+  const queuedCount = allSessions.filter((s) => s.status === "queued").length;
+
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-2">
+    <div className="flex h-full flex-col items-center justify-center gap-4">
       <HexIcon size={48} className="text-[var(--color-border)]" />
       <div
         className="text-lg font-semibold uppercase tracking-wider"
         style={{ color: "var(--color-text-muted)" }}
       >
-        Select a Session
+        Mission Control
       </div>
-      <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-        Choose a session from the sidebar to view details
+      <div
+        className="max-w-sm text-center text-xs leading-relaxed"
+        style={{ color: "var(--color-text-muted)" }}
+      >
+        Monitor and manage concurrent autoresearch sessions. Select a session
+        from the sidebar to view experiments, metrics, and agent activity.
       </div>
+
+      {allSessions.length > 0 && (
+        <div className="flex items-center gap-2">
+          <StatusPill count={runningCount} label="Running" status="running" />
+          <StatusPill count={pausedCount} label="Paused" status="paused" />
+          <StatusPill count={queuedCount} label="Queued" status="queued" />
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={onNewSession}
+        className="mt-2 flex items-center gap-1.5 rounded px-4 py-2 text-xs font-semibold uppercase tracking-wide transition-colors"
+        style={{
+          backgroundColor: "var(--color-accent)",
+          color: "var(--color-bg)",
+        }}
+      >
+        <PlusIcon size={14} />
+        New Session
+      </button>
     </div>
   );
 }
@@ -400,7 +432,7 @@ export function Dashboard() {
         )}
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          <MainContent onFork={openForkModal} />
+          <MainContent onFork={openForkModal} onNewSession={openNewModal} />
         </main>
         <ChatDrawer />
       </div>

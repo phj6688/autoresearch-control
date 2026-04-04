@@ -153,19 +153,36 @@ function ChatDrawerInner() {
               color: "var(--color-text-primary)",
             }}
             placeholder="Ask anything..."
+            aria-label="Message to assistant"
             disabled={streaming}
           />
           <button
             type="button"
             onClick={handleSend}
             disabled={streaming || !input.trim()}
+            aria-label={streaming ? "Sending message" : "Send message"}
             className="shrink-0 rounded px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40"
             style={{
               backgroundColor: "var(--color-accent)",
               color: "var(--color-bg)",
             }}
           >
-            {streaming ? "..." : "Send"}
+            {streaming ? (
+              <svg
+                width={14}
+                height={14}
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="animate-spin"
+              >
+                <circle cx="8" cy="8" r="6" opacity="0.25" />
+                <path d="M14 8a6 6 0 0 0-6-6" />
+              </svg>
+            ) : (
+              "Send"
+            )}
           </button>
         </div>
       </div>

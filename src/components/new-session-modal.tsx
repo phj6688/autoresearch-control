@@ -4,6 +4,17 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useSessionStore } from "@/stores/session-store";
 import { apiUrl } from "@/lib/base-path";
 import type { AgentType, MetricDirection, Session } from "@/lib/types";
+import type { SuggestedSessionConfig } from "@/stores/chat-store";
+
+interface GpuInfo {
+  index: number;
+  name: string;
+  memory_total_mb: number;
+  memory_used_mb: number;
+  utilization_pct: number;
+  temperature_c: number;
+  session_tag: string | null;
+}
 
 const AGENT_OPTIONS: Array<{ value: AgentType; label: string }> = [
   { value: "claude-code", label: "Claude Code" },
@@ -25,6 +36,7 @@ interface NewSessionModalProps {
   open: boolean;
   onClose: () => void;
   seedFrom?: Session | null;
+  suggestedConfig?: SuggestedSessionConfig | null;
 }
 
 interface FormState {
@@ -33,12 +45,15 @@ interface FormState {
   strategy: string;
   gpu: string;
   metric: string;
+  customMetricName: string;
+  customMetricDirection: MetricDirection;
 }
 
 export function NewSessionModal({
   open,
   onClose,
   seedFrom,
+  suggestedConfig,
 }: NewSessionModalProps) {
   const setSessions = useSessionStore((s) => s.setSessions);
   const selectSession = useSessionStore((s) => s.selectSession);
@@ -50,10 +65,13 @@ export function NewSessionModal({
     strategy: "",
     gpu: "auto",
     metric: "val_bpb",
+    customMetricName: "",
+    customMetricDirection: "higher",
   });
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [gpus, setGpus] = useState<GpuInfo[]>([]);
 
   const tagRef = useRef<HTMLInputElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -65,12 +83,30 @@ export function NewSessionModal({
       setSubmitting(false);
 
       if (seedFrom) {
+        const isPreset = METRIC_OPTIONS.some((m) => m.value === seedFrom.metric_name);
         setForm({
           tag: "",
           agent_type: seedFrom.agent_type,
           strategy: seedFrom.strategy,
           gpu: "auto",
-          metric: seedFrom.metric_name,
+          metric: isPreset ? seedFrom.metric_name : "custom",
+          customMetricName: isPreset ? "" : seedFrom.metric_name,
+          customMetricDirection: seedFrom.metric_direction,
+        });
+      } else if (suggestedConfig) {
+        const metricName = suggestedConfig.metric_name ?? "";
+        const isPreset = METRIC_OPTIONS.some((m) => m.value === metricName);
+        const validAgents = AGENT_OPTIONS.map((a) => a.value) as string[];
+        setForm({
+          tag: suggestedConfig.tag ?? "",
+          agent_type: (validAgents.includes(suggestedConfig.agent_type ?? "")
+            ? suggestedConfig.agent_type
+            : "claude-code") as AgentType,
+          strategy: suggestedConfig.strategy ?? "",
+          gpu: suggestedConfig.gpu ?? "auto",
+          metric: metricName ? (isPreset ? metricName : "custom") : "val_bpb",
+          customMetricName: metricName && !isPreset ? metricName : "",
+          customMetricDirection: suggestedConfig.metric_direction ?? "higher",
         });
       } else {
         setForm({
@@ -79,12 +115,19 @@ export function NewSessionModal({
           strategy: "",
           gpu: "auto",
           metric: "val_bpb",
+          customMetricName: "",
+          customMetricDirection: "higher",
         });
       }
 
+      fetch(apiUrl("/api/gpus"))
+        .then((r) => r.ok ? r.json() as Promise<GpuInfo[]> : Promise.resolve([]))
+        .then(setGpus)
+        .catch(() => setGpus([]));
+
       setTimeout(() => tagRef.current?.focus(), 50);
     }
-  }, [open, seedFrom]);
+  }, [open, seedFrom, suggestedConfig]);
 
   useEffect(() => {
     if (!open) return;
@@ -119,6 +162,14 @@ export function NewSessionModal({
       }
     }
 
+    if (form.metric === "custom") {
+      if (!form.customMetricName.trim()) {
+        next.customMetricName = "Metric name is required";
+      } else if (!/^[a-z0-9_]+$/.test(form.customMetricName.trim())) {
+        next.customMetricName = "Lowercase alphanumeric and underscores only (e.g. mrr_at_5)";
+      }
+    }
+
     setErrors(next);
     return Object.keys(next).length === 0;
   }, [form]);
@@ -132,15 +183,25 @@ export function NewSessionModal({
       setServerError(null);
 
       try {
-        const selectedMetric = METRIC_OPTIONS.find((m) => m.value === form.metric)
-          ?? METRIC_OPTIONS[0];
+        let metricName: string;
+        let metricDirection: MetricDirection;
+
+        if (form.metric === "custom") {
+          metricName = form.customMetricName.trim();
+          metricDirection = form.customMetricDirection;
+        } else {
+          const selectedMetric = METRIC_OPTIONS.find((m) => m.value === form.metric)
+            ?? METRIC_OPTIONS[0];
+          metricName = selectedMetric.value;
+          metricDirection = selectedMetric.direction;
+        }
 
         const body: Record<string, unknown> = {
           tag: form.tag,
           agent_type: form.agent_type,
           strategy: form.strategy,
-          metric_name: selectedMetric.value,
-          metric_direction: selectedMetric.direction,
+          metric_name: metricName,
+          metric_direction: metricDirection,
         };
 
         if (form.gpu !== "auto") {
@@ -238,6 +299,25 @@ export function NewSessionModal({
           </button>
         </div>
 
+        {!seedFrom && suggestedConfig && (
+          <div
+            className="mb-4 rounded border border-dashed px-3 py-2 text-xs"
+            style={{
+              borderColor: "var(--color-accent)",
+              color: "var(--color-text-secondary)",
+            }}
+          >
+            Pre-filled by{" "}
+            <span
+              className="font-bold"
+              style={{ color: "var(--color-accent)" }}
+            >
+              assistant suggestion
+            </span>
+            {" "}— review and adjust before creating.
+          </div>
+        )}
+
         {seedFrom && (
           <div
             className="mb-4 rounded border border-dashed px-3 py-2 text-xs"
@@ -261,12 +341,14 @@ export function NewSessionModal({
           {/* Tag */}
           <div>
             <label
+              htmlFor="session-tag"
               className="mb-1 block text-xs font-semibold uppercase tracking-wider"
               style={{ color: "var(--color-text-muted)" }}
             >
               Tag
             </label>
             <input
+              id="session-tag"
               ref={tagRef}
               type="text"
               value={form.tag}
@@ -293,13 +375,16 @@ export function NewSessionModal({
 
           {/* Agent Type */}
           <div>
-            <label
+            <span
+              id="agent-type-label"
               className="mb-1 block text-xs font-semibold uppercase tracking-wider"
               style={{ color: "var(--color-text-muted)" }}
             >
               Agent
-            </label>
+            </span>
             <div
+              role="group"
+              aria-labelledby="agent-type-label"
               className="flex rounded border"
               style={{ borderColor: "var(--color-border)" }}
             >
@@ -329,12 +414,14 @@ export function NewSessionModal({
           {/* Strategy */}
           <div>
             <label
+              htmlFor="session-strategy"
               className="mb-1 block text-xs font-semibold uppercase tracking-wider"
               style={{ color: "var(--color-text-muted)" }}
             >
               Strategy
             </label>
             <textarea
+              id="session-strategy"
               value={form.strategy}
               onChange={(e) => setField("strategy", e.target.value)}
               placeholder="Describe the research strategy for this session..."
@@ -361,49 +448,87 @@ export function NewSessionModal({
           {/* GPU */}
           <div>
             <label
-              className="mb-1 block text-xs font-semibold uppercase tracking-wider"
-              style={{ color: "var(--color-text-muted)" }}
+              className="flex items-center gap-2 cursor-pointer"
             >
-              GPU
-            </label>
-            <select
-              value={form.gpu}
-              onChange={(e) => setField("gpu", e.target.value)}
-              className="w-full rounded border px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--color-accent)]"
-              style={{
-                backgroundColor: "var(--color-bg)",
-                borderColor: errors.gpu
-                  ? "var(--color-error)"
-                  : "var(--color-border)",
-                color: "var(--color-text-primary)",
-              }}
-            >
-              <option value="auto">Auto (first available)</option>
-              {Array.from({ length: 8 }, (_, i) => (
-                <option key={i} value={String(i)}>
-                  GPU {i}
-                </option>
-              ))}
-            </select>
-            {errors.gpu && (
-              <div
-                className="mt-1 text-xs"
-                style={{ color: "var(--color-error)" }}
+              <input
+                type="checkbox"
+                checked={form.gpu !== "auto"}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    const firstFree = gpus.find((g) => g.session_tag === null);
+                    setField("gpu", firstFree ? String(firstFree.index) : "0");
+                  } else {
+                    setField("gpu", "auto");
+                  }
+                }}
+                className="rounded"
+                style={{ accentColor: "var(--color-accent)" }}
+              />
+              <span
+                className="text-xs font-semibold uppercase tracking-wider"
+                style={{ color: "var(--color-text-muted)" }}
               >
-                {errors.gpu}
-              </div>
+                Assign specific GPU
+              </span>
+              {form.gpu === "auto" && gpus.length > 0 && (
+                <span
+                  className="text-xs"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  ({gpus.filter((g) => g.session_tag === null).length}/{gpus.length} free)
+                </span>
+              )}
+            </label>
+            {form.gpu !== "auto" && (
+              <>
+                <label htmlFor="gpu-select" className="sr-only">Select GPU</label>
+                <select
+                  id="gpu-select"
+                  value={form.gpu}
+                  onChange={(e) => setField("gpu", e.target.value)}
+                  className="mt-2 w-full rounded border px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--color-accent)]"
+                  style={{
+                    backgroundColor: "var(--color-bg)",
+                    borderColor: errors.gpu
+                      ? "var(--color-error)"
+                      : "var(--color-border)",
+                    color: "var(--color-text-primary)",
+                  }}
+                >
+                  {gpus.map((gpu) => (
+                    <option
+                      key={gpu.index}
+                      value={String(gpu.index)}
+                      disabled={gpu.session_tag !== null}
+                    >
+                      GPU {gpu.index}: {gpu.name} ({Math.round(gpu.memory_total_mb / 1024)}GB)
+                      {gpu.session_tag ? ` — in use by ${gpu.session_tag}` : " — free"}
+                    </option>
+                  ))}
+                </select>
+                {errors.gpu && (
+                  <div
+                    className="mt-1 text-xs"
+                    style={{ color: "var(--color-error)" }}
+                  >
+                    {errors.gpu}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
           {/* Metric */}
           <div>
             <label
+              htmlFor="session-metric"
               className="mb-1 block text-xs font-semibold uppercase tracking-wider"
               style={{ color: "var(--color-text-muted)" }}
             >
               Metric
             </label>
             <select
+              id="session-metric"
               value={form.metric}
               onChange={(e) => setField("metric", e.target.value)}
               className="w-full rounded border px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--color-accent)]"
@@ -418,8 +543,97 @@ export function NewSessionModal({
                   {opt.label}
                 </option>
               ))}
+              <option value="custom">Custom metric...</option>
             </select>
           </div>
+
+          {/* Custom Metric Fields */}
+          {form.metric === "custom" && (
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label
+                  htmlFor="custom-metric-name"
+                  className="mb-1 block text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  Metric Name
+                </label>
+                <input
+                  id="custom-metric-name"
+                  type="text"
+                  value={form.customMetricName}
+                  onChange={(e) => setField("customMetricName", e.target.value)}
+                  placeholder="e.g. mrr_at_5, bleu_score, ndcg"
+                  className="w-full rounded border px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--color-accent)]"
+                  style={{
+                    backgroundColor: "var(--color-bg)",
+                    borderColor: errors.customMetricName
+                      ? "var(--color-error)"
+                      : "var(--color-border)",
+                    color: "var(--color-text-primary)",
+                  }}
+                />
+                {errors.customMetricName && (
+                  <div
+                    className="mt-1 text-xs"
+                    style={{ color: "var(--color-error)" }}
+                  >
+                    {errors.customMetricName}
+                  </div>
+                )}
+              </div>
+              <div className="w-40">
+                <span
+                  id="metric-direction-label"
+                  className="mb-1 block text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  Direction
+                </span>
+                <div
+                  role="group"
+                  aria-labelledby="metric-direction-label"
+                  className="flex rounded border"
+                  style={{ borderColor: "var(--color-border)" }}
+                >
+                  <button
+                    type="button"
+                    className="flex-1 px-2 py-1.5 text-xs font-semibold transition-colors"
+                    style={{
+                      backgroundColor:
+                        form.customMetricDirection === "higher"
+                          ? "var(--color-accent)"
+                          : "transparent",
+                      color:
+                        form.customMetricDirection === "higher"
+                          ? "var(--color-bg)"
+                          : "var(--color-text-secondary)",
+                    }}
+                    onClick={() => setField("customMetricDirection", "higher")}
+                  >
+                    Higher
+                  </button>
+                  <button
+                    type="button"
+                    className="flex-1 px-2 py-1.5 text-xs font-semibold transition-colors"
+                    style={{
+                      backgroundColor:
+                        form.customMetricDirection === "lower"
+                          ? "var(--color-accent)"
+                          : "transparent",
+                      color:
+                        form.customMetricDirection === "lower"
+                          ? "var(--color-bg)"
+                          : "var(--color-text-secondary)",
+                    }}
+                    onClick={() => setField("customMetricDirection", "lower")}
+                  >
+                    Lower
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Server error */}
           {serverError && (
