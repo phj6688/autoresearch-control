@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef } from "react";
 import type { Session, Experiment } from "@/lib/types";
 import { useSessionStore } from "@/stores/session-store";
 import { apiUrl } from "@/lib/base-path";
@@ -8,10 +8,12 @@ import { StatusBadge } from "./status-badge";
 import { ExperimentTimeline } from "./experiment-timeline";
 import { CommitFeed } from "./commit-feed";
 import { CodeHeatmap } from "./code-heatmap";
-import { PauseIcon, PlayIcon, StopIcon, ForkIcon, TrashIcon, WarningIcon } from "./icons";
+import { PauseIcon, PlayIcon, StopIcon, ForkIcon, TrashIcon, WarningIcon, DownloadIcon } from "./icons";
+import { Markdown } from "./markdown";
 import { ActivityPanel } from "./activity-panel";
 import { OutputViewer } from "./output-viewer";
 import { SessionEventTimeline } from "./session-event-timeline";
+import { CollapsibleSection } from "./collapsible-section";
 import { useActivityPoll } from "@/hooks/use-activity-poll";
 import { formatMetricValue, formatDelta, metricLabel } from "@/lib/metric-utils";
 
@@ -47,9 +49,17 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
   );
 
   const isOrphan = !session.tmux_session;
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  const handleExport = useCallback((format: "json" | "csv" | "code") => {
+    setExportOpen(false);
+    const url = apiUrl(`/api/sessions/${session.id}/export?format=${format}`);
+    window.open(url, "_blank");
+  }, [session.id]);
 
   const handleAction = useCallback(
-    async (action: "pause" | "resume" | "restart" | "kill") => {
+    async (action: "start" | "pause" | "resume" | "restart" | "kill") => {
       if (action === "kill") {
         const confirmed = window.confirm(
           `Kill session "${session.tag}"? The worktree will be preserved.`
@@ -73,6 +83,9 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
         if (res.ok) {
           const data = (await res.json()) as Session;
           updateSessionStatus(session.id, data.status);
+        } else {
+          const data = (await res.json().catch(() => ({ error: `Action failed (${res.status})` }))) as { error?: string };
+          alert(data.error ?? `Failed to ${action} session`);
         }
       } finally {
         setLoading(null);
@@ -200,6 +213,20 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
           </span>
         )}
         <div className="ml-auto flex items-center gap-2">
+          {session.status === "queued" && (
+            <button
+              disabled={loading !== null}
+              onClick={() => void handleAction("start")}
+              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-colors disabled:opacity-50"
+              style={{
+                backgroundColor: "var(--color-status-running-bg)",
+                color: "var(--color-status-running-text)",
+              }}
+            >
+              <PlayIcon size={12} />
+              {loading === "start" ? "..." : "Start"}
+            </button>
+          )}
           {session.status === "running" && (
             <button
               disabled={loading !== null}
@@ -228,7 +255,7 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
               {loading === "resume" ? "..." : "Resume"}
             </button>
           )}
-          {(session.status === "paused" || session.status === "killed" || session.status === "failed") && isOrphan && (
+          {(session.status === "running" || session.status === "paused" || session.status === "killed" || session.status === "failed") && (
             <button
               disabled={loading !== null}
               onClick={() => void handleAction("restart")}
@@ -270,6 +297,58 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
               Fork
             </button>
           )}
+          {experiments.length > 0 && (
+            <div className="relative" ref={exportRef}>
+              <button
+                className="flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-colors"
+                style={{
+                  backgroundColor: "var(--color-border)",
+                  color: "var(--color-text-secondary)",
+                }}
+                onClick={() => setExportOpen((v) => !v)}
+                title="Export session data"
+              >
+                <DownloadIcon size={12} />
+                Export
+              </button>
+              {exportOpen && (
+                <div
+                  className="absolute right-0 top-full z-10 mt-1 min-w-[180px] rounded border py-1 shadow-lg"
+                  style={{
+                    backgroundColor: "var(--color-surface)",
+                    borderColor: "var(--color-border)",
+                  }}
+                >
+                  <button
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors hover:bg-white/5"
+                    style={{ color: "var(--color-text-primary)" }}
+                    onClick={() => handleExport("json")}
+                  >
+                    <DownloadIcon size={10} />
+                    Full Report (JSON)
+                  </button>
+                  <button
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors hover:bg-white/5"
+                    style={{ color: "var(--color-text-primary)" }}
+                    onClick={() => handleExport("csv")}
+                  >
+                    <DownloadIcon size={10} />
+                    Experiments (CSV)
+                  </button>
+                  {session.worktree_path && (
+                    <button
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors hover:bg-white/5"
+                      style={{ color: "var(--color-text-primary)" }}
+                      onClick={() => handleExport("code")}
+                    >
+                      <DownloadIcon size={10} />
+                      Code (tar.gz)
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           {(session.status === "killed" || session.status === "completed" || session.status === "failed" || session.status === "queued") && (
             <button
               disabled={loading !== null}
@@ -305,105 +384,158 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
         </div>
       )}
 
-      {/* Strategy */}
-      <div
-        className="rounded border p-3 text-xs leading-relaxed"
-        style={{
-          borderColor: "var(--color-border)",
-          color: "var(--color-text-secondary)",
-        }}
-      >
-        {session.strategy}
-      </div>
-
-      {/* Live Activity */}
-      {(session.status === "running" || session.status === "paused") && (
-        <ActivityPanel
-          activity={activity}
-          error={activityError}
-          isRunning={session.status === "running"}
-        />
-      )}
-
-      {/* Output viewer for dead sessions */}
-      {(session.status === "killed" || session.status === "failed" || session.status === "completed") &&
-        (session.last_summary !== null || session.last_output_snapshot !== null) && (
-          <OutputViewer
-            summary={session.last_summary}
-            rawOutput={session.last_output_snapshot}
-          />
-        )}
-
-      {/* Metrics Row */}
-      <div className="flex flex-wrap gap-3">
-        {metrics.map((m) => (
-          <div
-            key={m.label}
-            className="flex-1 rounded border p-3"
-            style={{
-              borderColor: "var(--color-border)",
-              backgroundColor: "var(--color-surface)",
-              minWidth: "120px",
-            }}
-          >
-            <div
-              className="text-xs font-semibold uppercase tracking-wider"
-              style={{ color: "var(--color-text-muted)" }}
-            >
-              {m.label}
-            </div>
-            <div
-              className={`mt-1 font-bold tabular-nums ${m.large ? "text-2xl" : "text-lg"}`}
-              style={{ color: m.color }}
-            >
-              {m.value}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Session Event Timeline */}
-      <SessionEventTimeline sessionId={session.id} />
-
-      {/* Experiment Timeline */}
-      <div>
+      {/* Overview — expanded by default */}
+      <CollapsibleSection title="Overview" defaultExpanded>
+        {/* Strategy */}
         <div
-          className="mb-2 text-xs font-semibold uppercase tracking-wider"
-          style={{ color: "var(--color-text-muted)" }}
-        >
-          Experiment Timeline
-        </div>
-        <ExperimentTimeline experiments={experiments} metricDirection={session.metric_direction} metricName={session.metric_name} />
-      </div>
-
-      {/* Commit Feed + Heatmap */}
-      <div className="flex gap-4">
-        <div className="min-w-0 flex-1">
-          <CommitFeed experiments={experiments} />
-        </div>
-        <div className="w-[260px] shrink-0">
-          <CodeHeatmap experiments={experiments} />
-        </div>
-      </div>
-
-      {/* Cross-pollinate hint */}
-      {experiments.length > 0 && (
-        <div
-          className="flex items-center gap-3 rounded border border-dashed p-3"
+          className="rounded border p-3 text-xs leading-relaxed"
           style={{
             borderColor: "var(--color-border)",
-            color: "var(--color-text-muted)",
+            color: "var(--color-text-secondary)",
           }}
         >
-          <ForkIcon size={20} />
-          <div className="text-xs">
-            <span className="font-semibold" style={{ color: "var(--color-text-secondary)" }}>
-              Cross-pollinate:
-            </span>{" "}
-            Fork this session&apos;s best train.py into a new session with a different strategy to explore alternative directions.
+          <Markdown content={session.strategy} />
+        </div>
+
+        {/* Metrics Row */}
+        <div className="mt-3 flex flex-wrap gap-3">
+          {metrics.map((m) => (
+            <div
+              key={m.label}
+              className="flex-1 rounded border p-3"
+              style={{
+                borderColor: "var(--color-border)",
+                backgroundColor: "var(--color-surface)",
+                minWidth: "120px",
+              }}
+            >
+              <div
+                className="text-xs font-semibold uppercase tracking-wider"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                {m.label}
+              </div>
+              <div
+                className={`mt-1 font-bold tabular-nums ${m.large ? "text-2xl" : "text-lg"}`}
+                style={{ color: m.color }}
+              >
+                {m.value}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Session Event Timeline */}
+        <div className="mt-3">
+          <SessionEventTimeline sessionId={session.id} />
+        </div>
+      </CollapsibleSection>
+
+      {/* Activity — expanded when running/paused */}
+      {((session.status === "running" || session.status === "paused") ||
+        ((session.status === "killed" || session.status === "failed" || session.status === "completed") &&
+          (session.last_summary !== null || session.last_output_snapshot !== null))) && (
+        <CollapsibleSection
+          title="Activity"
+          defaultExpanded={session.status === "running" || session.status === "paused"}
+        >
+          {/* Live Activity */}
+          {(session.status === "running" || session.status === "paused") && (
+            <ActivityPanel
+              activity={activity}
+              error={activityError}
+              isRunning={session.status === "running"}
+              experimentCount={session.experiment_count}
+              bestValue={session.best_val_bpb}
+              metricName={session.metric_name}
+              metricDirection={session.metric_direction}
+              startedAt={session.started_at}
+              lastRestartAt={session.last_restart_at}
+              restartCount={session.restart_count}
+              lastSummary={session.last_summary}
+              strategy={session.strategy}
+            />
+          )}
+
+          {/* Output viewer for dead sessions */}
+          {(session.status === "killed" || session.status === "failed" || session.status === "completed") &&
+            (session.last_summary !== null || session.last_output_snapshot !== null) && (
+              <OutputViewer
+                summary={session.last_summary}
+                rawOutput={session.last_output_snapshot}
+              />
+            )}
+        </CollapsibleSection>
+      )}
+
+      {/* Experiments — collapsed by default */}
+      <CollapsibleSection title="Experiments">
+        <ExperimentTimeline experiments={experiments} metricDirection={session.metric_direction} metricName={session.metric_name} />
+
+        <div className="mt-3 flex gap-4">
+          <div className="min-w-0 flex-1">
+            <CommitFeed experiments={experiments} />
+          </div>
+          <div className="w-[260px] shrink-0">
+            <CodeHeatmap experiments={experiments} />
           </div>
         </div>
-      )}
+      </CollapsibleSection>
+
+      {/* Advanced — collapsed by default */}
+      <CollapsibleSection title="Advanced">
+        <div className="space-y-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+          <div className="flex gap-2">
+            <span style={{ color: "var(--color-text-muted)" }}>Branch:</span>
+            <span className="font-mono">{session.branch}</span>
+          </div>
+          {session.worktree_path && (
+            <div className="flex gap-2">
+              <span style={{ color: "var(--color-text-muted)" }}>Worktree:</span>
+              <span className="font-mono truncate">{session.worktree_path}</span>
+            </div>
+          )}
+          {session.tmux_session && (
+            <div className="flex gap-2">
+              <span style={{ color: "var(--color-text-muted)" }}>tmux:</span>
+              <span className="font-mono">{session.tmux_session}</span>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <span style={{ color: "var(--color-text-muted)" }}>GPU:</span>
+            <span>{session.gpu_index !== null ? `GPU ${session.gpu_index}` : "None"}</span>
+          </div>
+          <div className="flex gap-2">
+            <span style={{ color: "var(--color-text-muted)" }}>Metric:</span>
+            <span>{session.metric_name} ({session.metric_direction})</span>
+          </div>
+          {session.seed_from && (
+            <div className="flex gap-2">
+              <span style={{ color: "var(--color-text-muted)" }}>Forked from:</span>
+              <span className="font-mono">{session.seed_from}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Cross-pollinate hint */}
+        {experiments.length > 0 && (
+          <div
+            className="mt-3 flex items-center gap-3 rounded border border-dashed p-3"
+            style={{
+              borderColor: "var(--color-border)",
+              color: "var(--color-text-muted)",
+            }}
+          >
+            <ForkIcon size={20} />
+            <div className="text-xs">
+              <span className="font-semibold" style={{ color: "var(--color-text-secondary)" }}>
+                Cross-pollinate:
+              </span>{" "}
+              Fork this session&apos;s best train.py into a new session with a different strategy to explore alternative directions.
+            </div>
+          </div>
+        )}
+      </CollapsibleSection>
     </div>
   );
 }

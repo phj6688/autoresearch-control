@@ -249,3 +249,22 @@ export function FailedIcon({ size = 16, className }: IconProps) {
     </svg>
   );
 }
+
+export function KebabIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" className={className}>
+      <circle cx="8" cy="3" r="1.5" />
+      <circle cx="8" cy="8" r="1.5" />
+      <circle cx="8" cy="13" r="1.5" />
+    </svg>
+  );
+}
+
+export function SearchIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+      <circle cx="7" cy="7" r="4.5" />
+      <path d="M10.5 10.5L14 14" />
+    </svg>
+  );
+}

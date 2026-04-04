@@ -8,6 +8,7 @@ interface SessionStore {
   view: "dashboard" | "compare" | "analytics" | "events";
   gpus: GpuInfo[];
   connected: boolean;
+  lastUpdateAt: number | null;
 
   setSessions: (sessions: Session[]) => void;
   selectSession: (id: string | null) => void;
@@ -27,8 +28,9 @@ export const useSessionStore = create<SessionStore>((set) => ({
   view: "dashboard",
   gpus: [],
   connected: false,
+  lastUpdateAt: null,
 
-  setSessions: (sessions) => set({ sessions }),
+  setSessions: (sessions) => set({ sessions, lastUpdateAt: Date.now() }),
 
   selectSession: (id) => set({ selectedId: id }),
 
@@ -44,12 +46,13 @@ export const useSessionStore = create<SessionStore>((set) => ({
 
   setView: (view) => set({ view }),
 
-  setGpus: (gpus) => set({ gpus }),
+  setGpus: (gpus) => set({ gpus, lastUpdateAt: Date.now() }),
 
   setConnected: (connected) => set({ connected }),
 
   addExperiment: (sessionId, experiment) =>
     set((state) => ({
+      lastUpdateAt: Date.now(),
       sessions: state.sessions.map((s) => {
         if (s.id !== sessionId) return s;
         const newCount = s.experiment_count + 1;
@@ -74,6 +77,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
 
   updateSessionStatus: (sessionId, status) =>
     set((state) => ({
+      lastUpdateAt: Date.now(),
       sessions: state.sessions.map((s) =>
         s.id === sessionId ? { ...s, status } : s
       ),
