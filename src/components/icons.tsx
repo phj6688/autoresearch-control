@@ -207,3 +207,45 @@ export function WarningIcon({ size = 16, className }: IconProps) {
     </svg>
   );
 }
+
+export function DownloadIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+      <path d="M8 2V10M8 10L5 7M8 10L11 7" />
+      <path d="M3 12H13" />
+    </svg>
+  );
+}
+
+export function ClockIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+      <circle cx="8" cy="8" r="6" />
+      <path d="M8 4V8L10.5 10.5" />
+    </svg>
+  );
+}
+
+export function QueuedIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
+      <path d="M4 2H12M4 14H12M4 2C4 5 6 7 8 8C6 9 4 11 4 14M12 2C12 5 10 7 8 8C10 9 12 11 12 14" />
+    </svg>
+  );
+}
+
+export function CompletedIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <path d="M3 8L6.5 11.5L13 4.5" />
+    </svg>
+  );
+}
+
+export function FailedIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <path d="M4 4L12 12M12 4L4 12" />
+    </svg>
+  );
+}

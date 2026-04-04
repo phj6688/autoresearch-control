@@ -4,8 +4,9 @@ import type { Session, Experiment } from "@/lib/types";
 import { useSessionStore } from "@/stores/session-store";
 import { StatusBadge } from "./status-badge";
 import { Sparkline } from "./sparkline";
-import { CompareIcon } from "./icons";
-import { formatMetricValue, metricLabel } from "@/lib/metric-utils";
+import { CompareIcon, ClockIcon } from "./icons";
+import { formatMetricValue } from "@/lib/metric-utils";
+import { getMetricLabel, getMetricLabelShort } from "@/lib/metric-labels";
 
 function formatElapsed(startedAt: number | null): string {
   if (!startedAt) return "--";
@@ -22,6 +23,10 @@ const AGENT_SHORT: Record<string, string> = {
   aider: "Aider",
   "gemini-cli": "Gemini",
 };
+
+function stripTagMarkdown(tag: string): string {
+  return tag.replace(/^#+\s*/, "").replace(/\*\*/g, "");
+}
 
 interface SessionCardProps {
   session: Session;
@@ -79,7 +84,7 @@ export function SessionCard({ session, experiments = [], onSelectMobile }: Sessi
                 : "var(--color-text-primary)",
             }}
           >
-            {session.tag}
+            {stripTagMarkdown(session.tag)}
           </div>
           <div className="mt-0.5 flex items-center gap-2">
             <StatusBadge status={session.status} />
@@ -102,6 +107,7 @@ export function SessionCard({ session, experiments = [], onSelectMobile }: Sessi
             e.stopPropagation();
             toggleCompare(session.id);
           }}
+          aria-label={isComparing ? "Remove from comparison" : "Add to comparison"}
           title={isComparing ? "Remove from comparison" : "Add to comparison"}
         >
           <CompareIcon size={14} />
@@ -121,8 +127,8 @@ export function SessionCard({ session, experiments = [], onSelectMobile }: Sessi
       </div>
 
       <div className="mt-2 flex items-center gap-3 text-xs">
-        <div>
-          <span style={{ color: "var(--color-text-muted)" }}>BEST {metricLabel(session.metric_name)} </span>
+        <div title={`Best ${getMetricLabel(session.metric_name)} (${session.metric_name})`}>
+          <span style={{ color: "var(--color-text-muted)" }}>BEST {getMetricLabelShort(session.metric_name)} </span>
           <span
             className="font-semibold"
             style={{ color: "var(--color-accent)" }}
@@ -140,7 +146,11 @@ export function SessionCard({ session, experiments = [], onSelectMobile }: Sessi
           <span style={{ color: "var(--color-text-muted)" }}>HIT </span>
           <span style={{ color: "var(--color-success)" }}>{hitRate}%</span>
         </div>
-        <div className="ml-auto">
+        <div
+          className="ml-auto inline-flex items-center gap-1"
+          title="Total session runtime"
+        >
+          <ClockIcon size={12} />
           <span style={{ color: "var(--color-text-muted)" }}>
             {formatElapsed(session.started_at)}
           </span>

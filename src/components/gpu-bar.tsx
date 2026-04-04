@@ -1,6 +1,7 @@
 "use client";
 
 import { useSessionStore } from "@/stores/session-store";
+import { resolveGpuName, gpuTooltip } from "@/lib/gpu-names";
 
 function utilizationColor(pct: number, idle: boolean): string {
   if (idle) return "var(--color-text-muted)";
@@ -50,7 +51,11 @@ export function GpuBar() {
             style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}
           >
             <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold" style={{ color: "var(--color-text-primary)" }}>
+              <span
+                className="font-semibold"
+                style={{ color: "var(--color-text-primary)" }}
+                title={gpuTooltip(gpu.name, gpu.index)}
+              >
                 GPU {gpu.index}
               </span>
               <span style={{ color: "var(--color-text-muted)" }}>
@@ -58,7 +63,7 @@ export function GpuBar() {
               </span>
             </div>
             <div className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              {gpu.name}
+              {resolveGpuName(gpu.name, gpu.index)}
             </div>
             <div
               className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full"
