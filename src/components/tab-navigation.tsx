@@ -17,7 +17,7 @@ export function TabNavigation() {
 
   return (
     <nav
-      className="flex border-b"
+      className="flex gap-1 border-b px-2"
       style={{
         borderColor: "var(--color-border)",
         backgroundColor: "var(--color-surface)",
@@ -33,6 +33,10 @@ export function TabNavigation() {
               color: isActive
                 ? "var(--color-accent)"
                 : "var(--color-text-muted)",
+              backgroundColor: isActive
+                ? "color-mix(in srgb, var(--color-accent) 10%, transparent)"
+                : "transparent",
+              borderRadius: "4px 4px 0 0",
             }}
             onClick={() => setView(tab.key)}
           >

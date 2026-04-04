@@ -19,6 +19,29 @@ import { formatMetricValue, isBetter, metricLabel } from "@/lib/metric-utils";
 import { ChatDrawer } from "./chat-drawer";
 import { ToastContainer } from "./toast-container";
 import { useChatStore } from "@/stores/chat-store";
+import { KpiCard } from "./kpi-card";
+
+function StatusPill({
+  count,
+  label,
+  status,
+}: {
+  count: number;
+  label: string;
+  status: "running" | "paused" | "queued";
+}) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums"
+      style={{
+        backgroundColor: `var(--color-status-${status}-bg)`,
+        color: `var(--color-status-${status}-text)`,
+      }}
+    >
+      {count} {label}
+    </span>
+  );
+}
 
 function StatsBar() {
   const sessions = useSessionStore((s) => s.sessions);
@@ -26,7 +49,6 @@ function StatsBar() {
   const running = sessions.filter((s) => s.status === "running").length;
   const paused = sessions.filter((s) => s.status === "paused").length;
   const queued = sessions.filter((s) => s.status === "queued").length;
-  const total = sessions.length;
   const totalExperiments = sessions.reduce(
     (sum, s) => sum + s.experiment_count,
     0
@@ -45,34 +67,14 @@ function StatsBar() {
       : 0;
 
   const globalBestLabel = bestSession
-    ? `GLOBAL BEST ${metricLabel(bestSession.metric_name)}`
-    : "GLOBAL BEST";
+    ? `Global Best ${metricLabel(bestSession.metric_name)}`
+    : "Global Best";
   const globalBestValue = bestSession
     ? formatMetricValue(bestSession.best_val_bpb, bestSession.metric_name)
     : "--";
 
-  const stats = [
-    {
-      label: "SESSIONS",
-      value: `${running}R ${paused}P ${queued}Q`,
-      color: "var(--color-accent)",
-    },
-    {
-      label: "EXPERIMENTS",
-      value: String(totalExperiments),
-      color: "var(--color-text-primary)",
-    },
-    {
-      label: globalBestLabel,
-      value: globalBestValue,
-      color: "var(--color-accent)",
-    },
-    {
-      label: "COMMIT RATE",
-      value: `${commitRate}%`,
-      color: "var(--color-success)",
-    },
-  ];
+  const commitRateDisplay =
+    totalExperiments === 0 ? "No experiments yet" : `${commitRate}%`;
 
   return (
     <div
@@ -82,22 +84,32 @@ function StatsBar() {
         backgroundColor: "var(--color-surface)",
       }}
     >
-      {stats.map((stat) => (
-        <div key={stat.label} className="flex shrink-0 items-baseline gap-2">
-          <span
-            className="text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "var(--color-text-muted)" }}
-          >
-            {stat.label}
-          </span>
-          <span
-            className="text-sm font-bold tabular-nums"
-            style={{ color: stat.color }}
-          >
-            {stat.value}
-          </span>
+      <KpiCard label="Sessions" value="" tooltip="Active session counts by status">
+        <div className="flex items-center gap-2">
+          <StatusPill count={running} label="Running" status="running" />
+          <StatusPill count={paused} label="Paused" status="paused" />
+          <StatusPill count={queued} label="Queued" status="queued" />
         </div>
-      ))}
+      </KpiCard>
+
+      <KpiCard
+        label="Experiments"
+        value={String(totalExperiments)}
+        tooltip="Total experiments across all sessions"
+      />
+
+      <KpiCard
+        label={globalBestLabel}
+        value={globalBestValue}
+        tooltip="Best metric value across all sessions"
+      />
+
+      <KpiCard
+        label="Commit Rate"
+        value={commitRateDisplay}
+        unit={totalExperiments > 0 ? " overall" : undefined}
+        tooltip="Percentage of experiments that were committed (kept) vs discarded"
+      />
     </div>
   );
 }
@@ -260,21 +272,34 @@ export function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const toggleDrawer = useChatStore((s) => s.toggleDrawer);
   const drawerOpen = useChatStore((s) => s.drawerOpen);
+  const suggestedConfig = useChatStore((s) => s.suggestedConfig);
+  const clearSuggestion = useChatStore((s) => s.clearSuggestion);
+
+  // Open modal when assistant suggests a session config
+  useEffect(() => {
+    if (suggestedConfig) {
+      setForkSource(null);
+      setModalOpen(true);
+    }
+  }, [suggestedConfig]);
 
   const openNewModal = useCallback(() => {
     setForkSource(null);
+    clearSuggestion();
     setModalOpen(true);
-  }, []);
+  }, [clearSuggestion]);
 
   const openForkModal = useCallback((session: Session) => {
     setForkSource(session);
+    clearSuggestion();
     setModalOpen(true);
-  }, []);
+  }, [clearSuggestion]);
 
   const closeModal = useCallback(() => {
     setModalOpen(false);
     setForkSource(null);
-  }, []);
+    clearSuggestion();
+  }, [clearSuggestion]);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
@@ -385,6 +410,7 @@ export function Dashboard() {
         open={modalOpen}
         onClose={closeModal}
         seedFrom={forkSource}
+        suggestedConfig={suggestedConfig}
       />
       <ToastContainer />
     </div>
