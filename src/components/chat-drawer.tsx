@@ -81,6 +81,7 @@ function ChatDrawerInner() {
             className="rounded px-2 py-1 text-[10px] font-medium transition-colors hover:bg-white/5"
             style={{ color: "var(--color-text-secondary)" }}
             title="New conversation"
+            aria-label="New conversation"
           >
             New
           </button>
@@ -89,6 +90,7 @@ function ChatDrawerInner() {
             onClick={closeDrawer}
             className="rounded px-2 py-1 text-[10px] font-medium transition-colors hover:bg-white/5"
             style={{ color: "var(--color-text-secondary)" }}
+            aria-label="Close assistant drawer"
           >
             ✕
           </button>

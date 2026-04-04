@@ -294,6 +294,7 @@ export function NewSessionModal({
             onClick={onClose}
             className="text-xs transition-colors"
             style={{ color: "var(--color-text-muted)" }}
+            aria-label="Close modal"
           >
             ESC
           </button>

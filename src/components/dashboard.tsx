@@ -298,6 +298,21 @@ export function Dashboard() {
   useGpuPoll();
 
   const view = useSessionStore((s) => s.view);
+  const selectedId = useSessionStore((s) => s.selectedId);
+  const sessions = useSessionStore((s) => s.sessions);
+
+  // F16 — Dynamic page title
+  useEffect(() => {
+    const selectedSession = sessions.find((s) => s.id === selectedId);
+    if (selectedSession) {
+      document.title = `${selectedSession.tag} — Mission Control`;
+    } else if (view !== "dashboard") {
+      const viewLabel = view.charAt(0).toUpperCase() + view.slice(1);
+      document.title = `${viewLabel} — Mission Control`;
+    } else {
+      document.title = "Autoresearch Mission Control";
+    }
+  }, [view, selectedId, sessions]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [forkSource, setForkSource] = useState<Session | null>(null);
@@ -349,6 +364,7 @@ export function Dashboard() {
             className="md:hidden"
             style={{ color: "var(--color-text-secondary)" }}
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
           >
             <MenuIcon size={20} />
           </button>
@@ -375,6 +391,7 @@ export function Dashboard() {
           <button
             type="button"
             onClick={toggleDrawer}
+            aria-label={drawerOpen ? "Close assistant panel" : "Open assistant panel"}
             className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors"
             style={{
               backgroundColor: drawerOpen ? "var(--color-accent)" : "transparent",
@@ -393,6 +410,7 @@ export function Dashboard() {
               color: "var(--color-bg)",
             }}
             onClick={openNewModal}
+            aria-label="New session"
           >
             <PlusIcon size={14} />
             <span className="hidden sm:inline">New Session</span>
@@ -412,9 +430,18 @@ export function Dashboard() {
         {/* Mobile sidebar overlay */}
         {sidebarOpen && (view === "dashboard" || view === "compare") && (
           <div
+            role="button"
+            tabIndex={0}
+            aria-label="Close sidebar"
             className="fixed inset-0 z-40 md:hidden"
             style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
             onClick={() => setSidebarOpen(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setSidebarOpen(false);
+              }
+            }}
           />
         )}
 
@@ -431,7 +458,12 @@ export function Dashboard() {
           </div>
         )}
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main
+          className="flex-1 overflow-y-auto p-4 md:p-6"
+          role="tabpanel"
+          id={`tabpanel-${view}`}
+          aria-labelledby={`tab-${view}`}
+        >
           <MainContent onFork={openForkModal} onNewSession={openNewModal} />
         </main>
         <ChatDrawer />

@@ -6,7 +6,7 @@
   --color-border: #1e293b;
   --color-text-primary: #e2e8f0;
   --color-text-secondary: #94a3b8;
-  --color-text-muted: #475569;
+  --color-text-muted: #64748b;
   --color-accent: #22d3ee;
   --color-success: #34d399;
   --color-warning: #fbbf24;
@@ -47,6 +47,17 @@
   border-radius: 3px;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible,
+[tabindex="0"]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 @keyframes pulse {
   0%,
   100% {
@@ -54,5 +65,14 @@
   }
   50% {
     opacity: 0.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
   }
 }
