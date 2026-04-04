@@ -33,16 +33,21 @@ export const metadata: Metadata = {
   title: "Autoresearch Mission Control",
 };
 
+const themeScript = `(function(){try{var t=localStorage.getItem("theme");var c=(t==="light"||t==="dark")?t:(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");document.documentElement.classList.remove("light","dark");document.documentElement.classList.add(c)}catch(e){}})();`;
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body
         suppressHydrationWarning
-        className={`${jetbrainsMono.variable} font-[family-name:var(--font-jetbrains-mono)] bg-[#020617] text-[#e2e8f0] antialiased`}
+        className={`${jetbrainsMono.variable} font-[family-name:var(--font-jetbrains-mono)] bg-[var(--color-bg)] text-[var(--color-text-primary)] antialiased`}
       >
         {children}
       </body>

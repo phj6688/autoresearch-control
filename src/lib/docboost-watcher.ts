@@ -90,6 +90,7 @@ async function scanForNewResults(): Promise<void> {
         git_hash: null,
         delta,
         log_tail: filename,
+        annotation: null,
       });
 
       broker.broadcast({

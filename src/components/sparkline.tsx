@@ -1,7 +1,17 @@
 "use client";
 
+import { useCallback, useRef, useState } from "react";
 import type { Experiment, MetricDirection } from "@/lib/types";
-import { findBestIndex } from "@/lib/metric-utils";
+import { findBestIndex, formatMetricValue } from "@/lib/metric-utils";
+import { useSessionStore } from "@/stores/session-store";
+
+interface TooltipData {
+  x: number;
+  y: number;
+  experiment: Experiment;
+  index: number;
+  isBest: boolean;
+}
 
 interface SparklineProps {
   data: Experiment[];
@@ -10,6 +20,8 @@ interface SparklineProps {
   color?: string;
   showBest?: boolean;
   metricDirection?: MetricDirection;
+  metricName?: string;
+  interactive?: boolean;
 }
 
 export function Sparkline({
@@ -19,7 +31,25 @@ export function Sparkline({
   color = "var(--color-accent)",
   showBest = true,
   metricDirection = "lower",
+  metricName = "val_bpb",
+  interactive = true,
 }: SparklineProps) {
+  const [tooltip, setTooltip] = useState<TooltipData | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const selectSession = useSessionStore((s) => s.selectSession);
+
+  const handleMouseLeave = useCallback(() => {
+    setTooltip(null);
+  }, []);
+
+  const handleClick = useCallback(
+    (exp: Experiment) => {
+      if (!interactive) return;
+      selectSession(exp.session_id);
+    },
+    [interactive, selectSession]
+  );
+
   if (data.length === 0) {
     return (
       <svg width={width} height={height}>
@@ -57,35 +87,95 @@ export function Sparkline({
     metricDirection
   );
 
+  const tooltipAbove = tooltip ? tooltip.y > 20 : true;
+
   return (
-    <svg width={width} height={height}>
-      <polyline
-        points={points}
-        fill="none"
-        stroke={color}
-        strokeWidth={1.5}
-        strokeLinejoin="round"
-      />
-      {data.map((d, i) => (
-        <circle
-          key={d.id ?? i}
-          cx={scaleX(i)}
-          cy={scaleY(d.val_bpb)}
-          r={d.committed ? 2 : 1.5}
-          fill={d.committed ? color : "var(--color-text-muted)"}
-          opacity={d.committed ? 1 : 0.5}
-        />
-      ))}
-      {showBest && (
-        <circle
-          cx={scaleX(bestIdx)}
-          cy={scaleY(data[bestIdx].val_bpb)}
-          r={4}
+    <div ref={wrapperRef} className="relative" style={{ width, height }}>
+      <svg width={width} height={height}>
+        <polyline
+          points={points}
           fill="none"
-          stroke="var(--color-warning)"
+          stroke={color}
           strokeWidth={1.5}
+          strokeLinejoin="round"
         />
+        {data.map((d, i) => {
+          const isBest = i === bestIdx;
+          const cx = scaleX(i);
+          const cy = scaleY(d.val_bpb);
+          return (
+            <g key={d.id ?? i}>
+              {showBest && isBest && (
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={5}
+                  fill="none"
+                  stroke="var(--color-warning)"
+                  strokeWidth={1.5}
+                />
+              )}
+              <circle
+                cx={cx}
+                cy={cy}
+                r={
+                  interactive && tooltip?.index === i
+                    ? 3.5
+                    : isBest
+                      ? 3
+                      : d.committed
+                        ? 2
+                        : 1.5
+                }
+                fill={d.committed ? color : "var(--color-text-muted)"}
+                opacity={d.committed ? 1 : 0.5}
+                style={interactive ? { cursor: "pointer" } : undefined}
+                onMouseEnter={() => {
+                  if (!interactive) return;
+                  setTooltip({ x: cx, y: cy, experiment: d, index: i, isBest: i === bestIdx });
+                }}
+                onMouseLeave={handleMouseLeave}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClick(d);
+                }}
+              />
+            </g>
+          );
+        })}
+      </svg>
+
+      {interactive && tooltip && (
+        <div
+          className="pointer-events-none absolute z-50 rounded border px-2 py-1 text-xs whitespace-nowrap"
+          style={{
+            left: Math.max(0, Math.min(tooltip.x - 60, width - 120)),
+            top: tooltipAbove ? tooltip.y - 40 : tooltip.y + 10,
+            backgroundColor: "var(--color-surface)",
+            borderColor: "var(--color-border)",
+            color: "var(--color-text-primary)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+          }}
+        >
+          <span className="font-semibold" style={{ color: "var(--color-accent)" }}>
+            {formatMetricValue(tooltip.experiment.val_bpb, metricName)}
+          </span>
+          <span style={{ color: "var(--color-text-muted)" }}>
+            {" "}· Run #{tooltip.experiment.run_number}
+          </span>
+          <span style={{ color: tooltip.experiment.committed ? "var(--color-success)" : "var(--color-text-muted)" }}>
+            {" "}· {tooltip.experiment.committed ? "committed" : "discarded"}
+          </span>
+          {tooltip.experiment.created_at && (
+            <span style={{ color: "var(--color-text-muted)" }}>
+              {" "}· {new Date(tooltip.experiment.created_at).toLocaleTimeString()}
+            </span>
+          )}
+          {tooltip.isBest && (
+            <span style={{ color: "var(--color-warning)" }}> ★</span>
+          )}
+        </div>
       )}
-    </svg>
+    </div>
   );
 }

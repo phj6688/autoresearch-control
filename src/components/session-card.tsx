@@ -1,12 +1,16 @@
 "use client";
 
+import { useCallback } from "react";
 import type { Session, Experiment } from "@/lib/types";
 import { useSessionStore } from "@/stores/session-store";
+import { apiUrl } from "@/lib/base-path";
 import { StatusBadge } from "./status-badge";
 import { Sparkline } from "./sparkline";
 import { CompareIcon, ClockIcon } from "./icons";
 import { formatMetricValue } from "@/lib/metric-utils";
 import { getMetricLabel, getMetricLabelShort } from "@/lib/metric-labels";
+import { ContextMenu } from "./context-menu";
+import type { ContextMenuItem } from "./context-menu";
 
 function formatElapsed(startedAt: number | null): string {
   if (!startedAt) return "--";
@@ -40,6 +44,115 @@ export function SessionCard({ session, experiments = [], onSelectMobile }: Sessi
   const selectSession = useSessionStore((s) => s.selectSession);
   const setView = useSessionStore((s) => s.setView);
   const toggleCompare = useSessionStore((s) => s.toggleCompare);
+  const updateSessionStatus = useSessionStore((s) => s.updateSessionStatus);
+  const removeSession = useSessionStore((s) => s.removeSession);
+
+  const handleSessionAction = useCallback(
+    async (action: "pause" | "resume" | "restart" | "kill") => {
+      if (action === "kill") {
+        const confirmed = window.confirm(`Kill session "${session.tag}"? The worktree will be preserved.`);
+        if (!confirmed) return;
+      }
+      if (action === "restart") {
+        const confirmed = window.confirm(`Restart session "${session.tag}"?`);
+        if (!confirmed) return;
+      }
+      try {
+        const res = await fetch(apiUrl(`/api/sessions/${session.id}`), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as Session;
+          updateSessionStatus(session.id, data.status);
+        }
+      } catch {
+        /* handled silently */
+      }
+    },
+    [session.id, session.tag, updateSessionStatus]
+  );
+
+  const handleDelete = useCallback(async () => {
+    const confirmed = window.confirm(`Delete session "${session.tag}"?`);
+    if (!confirmed) return;
+    try {
+      const res = await fetch(apiUrl(`/api/sessions/${session.id}`), {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        removeSession(session.id);
+      }
+    } catch {
+      /* handled silently */
+    }
+  }, [session.id, session.tag, removeSession]);
+
+  const handleExport = useCallback(() => {
+    const url = apiUrl(`/api/sessions/${session.id}/export?format=json`);
+    window.open(url, "_blank");
+  }, [session.id]);
+
+  const s = session.status;
+  const isRunning = s === "running";
+  const isPaused = s === "paused";
+  const isDead = s === "killed" || s === "completed" || s === "failed";
+
+  const contextMenuItems: ContextMenuItem[] = [
+    {
+      id: "pause",
+      label: "Pause",
+      disabled: !isRunning,
+      onAction: () => void handleSessionAction("pause"),
+    },
+    {
+      id: "resume",
+      label: "Resume",
+      disabled: !isPaused,
+      onAction: () => void handleSessionAction("resume"),
+    },
+    {
+      id: "restart",
+      label: "Restart",
+      disabled: s === "queued" || s === "completed",
+      onAction: () => void handleSessionAction("restart"),
+    },
+    {
+      id: "fork",
+      label: "Fork",
+      disabled: session.experiment_count === 0,
+      onAction: () => {
+        selectSession(session.id);
+        setView("dashboard");
+      },
+    },
+    {
+      id: "export",
+      label: "Export",
+      disabled: session.experiment_count === 0,
+      onAction: handleExport,
+    },
+    {
+      id: "compare",
+      label: compareIds.includes(session.id) ? "Remove from Comparison" : "Add to Comparison",
+      onAction: () => toggleCompare(session.id),
+    },
+    {
+      id: "kill",
+      label: "Kill",
+      disabled: !(isRunning || isPaused),
+      danger: true,
+      onAction: () => void handleSessionAction("kill"),
+    },
+    {
+      id: "delete",
+      label: "Delete",
+      disabled: !(isDead || s === "queued"),
+      danger: true,
+      onAction: () => void handleDelete(),
+    },
+  ];
 
   const isSelected = selectedId === session.id;
   const isComparing = compareIds.includes(session.id);
@@ -96,22 +209,26 @@ export function SessionCard({ session, experiments = [], onSelectMobile }: Sessi
             </span>
           </div>
         </div>
-        <button
-          className="shrink-0 rounded p-1 transition-colors hover:bg-[var(--color-border)]"
-          style={{
-            color: isComparing
-              ? "var(--color-warning)"
-              : "var(--color-text-muted)",
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleCompare(session.id);
-          }}
-          aria-label={isComparing ? "Remove from comparison" : "Add to comparison"}
-          title={isComparing ? "Remove from comparison" : "Add to comparison"}
-        >
-          <CompareIcon size={14} />
-        </button>
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+          <button
+            className="shrink-0 rounded p-1 transition-colors hover:bg-[var(--color-border)]"
+            style={{
+              color: isComparing
+                ? "var(--color-warning)"
+                : "var(--color-text-muted)",
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleCompare(session.id);
+            }}
+            aria-label={isComparing ? "Remove from comparison" : "Add to comparison"}
+            title={isComparing ? "Remove from comparison" : "Add to comparison"}
+          >
+            <CompareIcon size={14} />
+          </button>
+          <ContextMenu items={contextMenuItems} ariaLabel={`Actions for ${session.tag}`} />
+        </div>
       </div>
 
       <div

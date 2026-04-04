@@ -127,6 +127,7 @@ function createSchema(db: Database.Database): void {
   try { db.exec(`ALTER TABLE sessions ADD COLUMN last_summary TEXT`); } catch { /* exists */ }
   try { db.exec(`ALTER TABLE sessions ADD COLUMN restart_count INTEGER DEFAULT 0`); } catch { /* exists */ }
   try { db.exec(`ALTER TABLE sessions ADD COLUMN last_restart_at INTEGER`); } catch { /* exists */ }
+  try { db.exec(`ALTER TABLE experiments ADD COLUMN annotation TEXT`); } catch { /* exists */ }
 }
 
 export function withRetry<T>(fn: () => T): T {
@@ -257,8 +258,8 @@ export function insertExperiment(
   return withRetry(() => {
     const result = db
       .prepare(
-        `INSERT INTO experiments (session_id, run_number, val_bpb, peak_vram_mb, duration_s, committed, change_summary, git_hash, delta, log_tail)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO experiments (session_id, run_number, val_bpb, peak_vram_mb, duration_s, committed, change_summary, git_hash, delta, log_tail, annotation)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         exp.session_id,
@@ -270,7 +271,8 @@ export function insertExperiment(
         exp.change_summary ?? null,
         exp.git_hash ?? null,
         exp.delta ?? null,
-        exp.log_tail ?? null
+        exp.log_tail ?? null,
+        exp.annotation ?? null
       );
     return db
       .prepare("SELECT * FROM experiments WHERE id = ?")
@@ -454,5 +456,27 @@ export function countSessionEvents(filters?: {
       .prepare(`SELECT COUNT(*) as count FROM session_events ${where}`)
       .get(...params) as { count: number };
     return row.count;
+  });
+}
+
+export function updateExperimentAnnotation(
+  experimentId: number,
+  sessionId: string,
+  annotation: string | null
+): Experiment | undefined {
+  const db = getDb();
+  return withRetry(() => {
+    const existing = db
+      .prepare("SELECT * FROM experiments WHERE id = ? AND session_id = ?")
+      .get(experimentId, sessionId) as Experiment | undefined;
+    if (!existing) return undefined;
+
+    db.prepare("UPDATE experiments SET annotation = ? WHERE id = ?").run(
+      annotation,
+      experimentId
+    );
+    return db
+      .prepare("SELECT * FROM experiments WHERE id = ?")
+      .get(experimentId) as Experiment;
   });
 }

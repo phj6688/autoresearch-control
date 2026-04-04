@@ -49,6 +49,7 @@ export interface Experiment {
   git_hash: string | null;
   delta: number | null;
   log_tail: string | null;
+  annotation: string | null;
   created_at: number;
 }
 

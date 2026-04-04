@@ -62,6 +62,7 @@ function onNewExperiments(
       git_hash: null,
       delta,
       log_tail: null,
+      annotation: null,
     });
 
     if (bestBpb === null || isBetter(exp.val_bpb, bestBpb, session.metric_direction)) {
@@ -182,6 +183,28 @@ export async function createSession(
   }
 }
 
+export async function startSession(id: string): Promise<Session> {
+  const session = db.getSession(id);
+  if (!session) throw new SessionError(404, "Session not found");
+  if (session.status !== "queued") {
+    throw new SessionError(
+      409,
+      `Cannot start session in ${session.status} state`
+    );
+  }
+
+  const assignedGpus = db.getAssignedGpuIndexes();
+  const gpuIndex = await findFreeGpu(assignedGpus);
+  if (gpuIndex === null) {
+    throw new SessionError(
+      409,
+      "No free GPU available. Kill or pause a running session first."
+    );
+  }
+
+  return promoteToRunning(session, gpuIndex);
+}
+
 export async function pauseSession(id: string): Promise<Session> {
   const session = db.getSession(id);
   if (!session) throw new SessionError(404, "Session not found");
@@ -193,7 +216,11 @@ export async function pauseSession(id: string): Promise<Session> {
   }
 
   if (session.tmux_session) {
-    await pm.pauseSession(session.tmux_session);
+    const alive = await pm.isSessionAlive(session.tmux_session);
+    if (alive) {
+      await pm.pauseSession(session.tmux_session);
+    }
+    // If tmux is dead, still update status so user can restart/kill
   }
 
   const updated = db.updateSession(id, { status: "paused" });
@@ -242,7 +269,7 @@ export async function resumeSession(id: string): Promise<Session> {
 export async function restartSession(id: string): Promise<Session> {
   const session = db.getSession(id);
   if (!session) throw new SessionError(404, "Session not found");
-  if (session.status !== "paused" && session.status !== "killed" && session.status !== "failed") {
+  if (session.status !== "running" && session.status !== "paused" && session.status !== "killed" && session.status !== "failed") {
     throw new SessionError(
       409,
       `Cannot restart session in ${session.status} state`

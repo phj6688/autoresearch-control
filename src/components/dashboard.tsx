@@ -14,12 +14,15 @@ import { TabNavigation } from "./tab-navigation";
 import { AnalyticsView } from "./analytics-view";
 import { EventsView } from "./events-view";
 import { HexIcon, PlusIcon } from "./icons";
+import { ThemeToggle } from "./theme-toggle";
 import type { Experiment, Session } from "@/lib/types";
 import { formatMetricValue, isBetter, metricLabel } from "@/lib/metric-utils";
 import { ChatDrawer } from "./chat-drawer";
 import { ToastContainer } from "./toast-container";
 import { useChatStore } from "@/stores/chat-store";
 import { KpiCard } from "./kpi-card";
+import { StatusBar } from "./status-bar";
+import { CommandPalette } from "./command-palette";
 
 function StatusPill({
   count,
@@ -317,6 +320,19 @@ export function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [forkSource, setForkSource] = useState<Session | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // Global Ctrl+K / Cmd+K handler for command palette
+  useEffect(() => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    }
+    document.addEventListener("keydown", handleGlobalKeyDown);
+    return () => document.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
   const toggleDrawer = useChatStore((s) => s.toggleDrawer);
   const drawerOpen = useChatStore((s) => s.drawerOpen);
   const suggestedConfig = useChatStore((s) => s.suggestedConfig);
@@ -388,6 +404,7 @@ export function Dashboard() {
         </div>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <button
             type="button"
             onClick={toggleDrawer}
@@ -459,7 +476,7 @@ export function Dashboard() {
         )}
 
         <main
-          className="flex-1 overflow-y-auto p-4 md:p-6"
+          className="flex-1 overflow-y-auto p-4 pb-2 md:p-6 md:pb-2"
           role="tabpanel"
           id={`tabpanel-${view}`}
           aria-labelledby={`tab-${view}`}
@@ -469,6 +486,9 @@ export function Dashboard() {
         <ChatDrawer />
       </div>
 
+      {/* Status Bar */}
+      <StatusBar />
+
       {/* New Session / Fork Modal */}
       <NewSessionModal
         open={modalOpen}
@@ -477,6 +497,11 @@ export function Dashboard() {
         suggestedConfig={suggestedConfig}
       />
       <ToastContainer />
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onNewSession={openNewModal}
+      />
     </div>
   );
 }
