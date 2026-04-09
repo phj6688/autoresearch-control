@@ -1,6 +1,10 @@
 "use client";
 
+<<<<<<< HEAD
 import { useCallback, useEffect, useRef, useState } from "react";
+=======
+import { useCallback, useState, useRef } from "react";
+>>>>>>> origin/forge/session-0
 import type { Session, Experiment } from "@/lib/types";
 import { useSessionStore } from "@/stores/session-store";
 import { apiUrl } from "@/lib/base-path";
@@ -8,7 +12,11 @@ import { StatusBadge } from "./status-badge";
 import { ExperimentTimeline } from "./experiment-timeline";
 import { CommitFeed } from "./commit-feed";
 import { CodeHeatmap } from "./code-heatmap";
+<<<<<<< HEAD
 import { PauseIcon, PlayIcon, StopIcon, ForkIcon, TrashIcon, WarningIcon, DownloadIcon, PencilIcon } from "./icons";
+=======
+import { PauseIcon, PlayIcon, StopIcon, ForkIcon, TrashIcon, WarningIcon, DownloadIcon } from "./icons";
+>>>>>>> origin/forge/session-0
 import { Markdown } from "./markdown";
 import { ActivityPanel } from "./activity-panel";
 import { OutputViewer } from "./output-viewer";
@@ -627,6 +635,7 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
             <CodeHeatmap experiments={experiments} />
           </div>
         </div>
+<<<<<<< HEAD
 
         {experiments.length > 0 && (
           <div className="mt-4">
@@ -639,6 +648,8 @@ export function SessionDetail({ session, experiments, onFork }: SessionDetailPro
             <ExperimentAnnotations experiments={experiments} sessionId={session.id} />
           </div>
         )}
+=======
+>>>>>>> origin/forge/session-0
       </CollapsibleSection>
 
       {/* Advanced — collapsed by default */}
