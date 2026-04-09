@@ -13,9 +13,10 @@ services:
     - DEFAULT_AGENT_COMMAND=${DEFAULT_AGENT_COMMAND:-claude --model claude-opus-4-6}
     - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     - ASSISTANT_MODEL=${ASSISTANT_MODEL:-claude-haiku-4-5-20251001}
-    network_mode: host
     ports:
     - 3200:3200
+    networks:
+    - deploy_iris-net
     restart: unless-stopped
     volumes:
     - ./data:/app/data
@@ -34,3 +35,7 @@ services:
     group_add:
     - video
     - render
+
+networks:
+  deploy_iris-net:
+    external: true

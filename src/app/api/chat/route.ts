@@ -5,19 +5,22 @@ import * as chatDb from "@/lib/chat-db";
 
 export const dynamic = "force-dynamic";
 
-const getClient = (() => {
-  let client: Anthropic | null = null;
-  return () => {
-    if (!client) {
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) {
-        throw new Error("ANTHROPIC_API_KEY not configured");
-      }
-      client = new Anthropic({ apiKey });
+const clientState = { client: null as Anthropic | null };
+
+function getClient(): Anthropic {
+  if (!clientState.client) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new Error("ANTHROPIC_API_KEY not configured");
     }
-    return client;
-  };
-})();
+    clientState.client = new Anthropic({ apiKey });
+  }
+  return clientState.client;
+}
+
+function invalidateClient(): void {
+  clientState.client = null;
+}
 
 export async function POST(request: NextRequest): Promise<Response> {
   let body: { conversationId?: string; message?: string; sessionId?: string };
@@ -75,7 +78,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       try {
         const client = getClient();
         const model =
-          process.env.ASSISTANT_MODEL || "claude-sonnet-4-20250514";
+          process.env.ASSISTANT_MODEL || "claude-haiku-4-5-20251001";
 
         // Assemble context BEFORE storing user message to avoid duplication
         const { systemPrompt, conversationHistory } = await assembleContext({
@@ -89,14 +92,25 @@ export async function POST(request: NextRequest): Promise<Response> {
         // Store user message AFTER context assembly
         chatDb.insertMessage(conversationId, "user", message.trim(), sessionId);
 
-        // Build messages from history + new user message
-        const messages = [
+        // Build messages from history + new user message, ensuring no consecutive same-role messages
+        const rawMessages = [
           ...conversationHistory.map((m) => ({
             role: m.role as "user" | "assistant",
             content: m.content,
           })),
           { role: "user" as const, content: message.trim() },
         ];
+
+        // Merge consecutive same-role messages (can happen if a previous API call failed
+        // and no assistant response was stored)
+        const messages: Array<{ role: "user" | "assistant"; content: string }> = [];
+        for (const msg of rawMessages) {
+          if (messages.length > 0 && messages[messages.length - 1].role === msg.role) {
+            messages[messages.length - 1].content += "\n\n" + msg.content;
+          } else {
+            messages.push({ ...msg });
+          }
+        }
 
         sendEvent("status", { status: "streaming" });
 
@@ -137,7 +151,8 @@ export async function POST(request: NextRequest): Promise<Response> {
             message: "Service temporarily unavailable, try again in a moment",
           });
         } else if (error.status === 401) {
-          sendEvent("error", { message: "API key invalid" });
+          invalidateClient();
+          sendEvent("error", { message: "API key invalid or expired — retrying on next request" });
         } else {
           sendEvent("error", {
             message: error.message || "An unexpected error occurred",
