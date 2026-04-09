@@ -9,11 +9,15 @@ const clientState = { client: null as Anthropic | null };
 
 function getClient(): Anthropic {
   if (!clientState.client) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new Error("ANTHROPIC_API_KEY not configured");
+    const baseURL = process.env.CLIPROXY_GATEWAY_URL;
+    const apiKey = process.env.CLIPROXY_GATEWAY_TOKEN;
+    if (!baseURL) {
+      throw new Error("CLIPROXY_GATEWAY_URL not configured");
     }
-    clientState.client = new Anthropic({ apiKey });
+    if (!apiKey) {
+      throw new Error("CLIPROXY_GATEWAY_TOKEN not configured");
+    }
+    clientState.client = new Anthropic({ apiKey, baseURL });
   }
   return clientState.client;
 }
@@ -78,7 +82,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       try {
         const client = getClient();
         const model =
-          process.env.ASSISTANT_MODEL || "claude-haiku-4-5-20251001";
+          process.env.ASSISTANT_MODEL || "anthropic/claude-haiku-4-5";
 
         // Assemble context BEFORE storing user message to avoid duplication
         const { systemPrompt, conversationHistory } = await assembleContext({
