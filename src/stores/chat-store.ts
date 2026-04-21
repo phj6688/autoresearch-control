@@ -8,10 +8,20 @@ export interface Toast {
   createdAt: number;
 }
 
+export interface SuggestedSessionConfig {
+  tag?: string;
+  agent_type?: string;
+  strategy?: string;
+  metric_name?: string;
+  metric_direction?: "higher" | "lower";
+  gpu?: string;
+}
+
 interface ChatState {
   drawerOpen: boolean;
   activeConversationId: string | null;
   toasts: Toast[];
+  suggestedConfig: SuggestedSessionConfig | null;
 
   toggleDrawer: () => void;
   openDrawer: () => void;
@@ -19,6 +29,8 @@ interface ChatState {
   setActiveConversation: (id: string | null) => void;
   addToast: (toast: Omit<Toast, "id" | "createdAt">) => void;
   removeToast: (id: string) => void;
+  applySuggestion: (config: SuggestedSessionConfig) => void;
+  clearSuggestion: () => void;
 }
 
 let toastCounter = 0;
@@ -27,6 +39,7 @@ export const useChatStore = create<ChatState>((set) => ({
   drawerOpen: false,
   activeConversationId: null,
   toasts: [],
+  suggestedConfig: null,
 
   toggleDrawer: () => set((s) => ({ drawerOpen: !s.drawerOpen })),
   openDrawer: () => set({ drawerOpen: true }),
@@ -44,4 +57,7 @@ export const useChatStore = create<ChatState>((set) => ({
 
   removeToast: (id) =>
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+
+  applySuggestion: (config) => set({ suggestedConfig: config }),
+  clearSuggestion: () => set({ suggestedConfig: null }),
 }));
