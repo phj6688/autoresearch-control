@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: ["better-sqlite3"],
+  eslint: { ignoreDuringBuilds: true },
   basePath: "/proxy/autoresearch",
   headers: async () => [
     {

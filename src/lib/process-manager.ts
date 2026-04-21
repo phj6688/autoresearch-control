@@ -98,9 +98,10 @@ export async function pauseSession(tmuxName: string): Promise<void> {
     );
   }
   try {
-    await execFileAsync("kill", ["-STOP", `-${pid}`]);
+    // Send SIGSTOP to process group first, fall back to single process
+    process.kill(-pid, "SIGSTOP");
   } catch {
-    await execFileAsync("kill", ["-STOP", String(pid)]);
+    process.kill(pid, "SIGSTOP");
   }
 }
 
@@ -112,9 +113,9 @@ export async function resumeSession(tmuxName: string): Promise<void> {
     );
   }
   try {
-    await execFileAsync("kill", ["-CONT", `-${pid}`]);
+    process.kill(-pid, "SIGCONT");
   } catch {
-    await execFileAsync("kill", ["-CONT", String(pid)]);
+    process.kill(pid, "SIGCONT");
   }
 }
 
@@ -123,7 +124,7 @@ export async function killSession(tmuxName: string): Promise<void> {
 
   if (pid !== null) {
     try {
-      await execFileAsync("kill", ["-TERM", String(pid)]);
+      process.kill(pid, "SIGTERM");
     } catch {
       /* process may already be gone */
     }
@@ -131,7 +132,7 @@ export async function killSession(tmuxName: string): Promise<void> {
     const deadline = Date.now() + 5000;
     while (Date.now() < deadline) {
       try {
-        await execFileAsync("kill", ["-0", String(pid)]);
+        process.kill(pid, 0);
       } catch {
         break;
       }
@@ -139,8 +140,8 @@ export async function killSession(tmuxName: string): Promise<void> {
     }
 
     try {
-      await execFileAsync("kill", ["-0", String(pid)]);
-      await execFileAsync("kill", ["-KILL", String(pid)]);
+      process.kill(pid, 0);
+      process.kill(pid, "SIGKILL");
     } catch {
       /* already dead */
     }
