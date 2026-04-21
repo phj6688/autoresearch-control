@@ -15,6 +15,8 @@ interface HealthStatus {
   last_restart_at: number | null;
   experiment_count: number;
   best_val_bpb: number | null;
+  metric_name: string;
+  metric_direction: string;
 }
 
 export async function GET(): Promise<NextResponse> {
@@ -44,6 +46,8 @@ export async function GET(): Promise<NextResponse> {
           last_restart_at: session.last_restart_at,
           experiment_count: session.experiment_count,
           best_val_bpb: session.best_val_bpb,
+          metric_name: session.metric_name,
+          metric_direction: session.metric_direction,
         };
       }
     );
@@ -51,12 +55,15 @@ export async function GET(): Promise<NextResponse> {
     const sessions = await Promise.all(sessionHealthChecks);
     const healthyCount = sessions.filter((s) => s.healthy).length;
     const unhealthyCount = sessions.length - healthyCount;
+    const totalRestarts = sessions.reduce((sum, s) => sum + s.restart_count, 0);
 
     return NextResponse.json({
-      healthy: healthyCount,
-      unhealthy: unhealthyCount,
-      total: sessions.length,
       sessions,
+      summary: {
+        healthy: healthyCount,
+        unhealthy: unhealthyCount,
+        total_restarts: totalRestarts,
+      },
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Internal server error";

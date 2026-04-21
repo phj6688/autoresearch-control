@@ -165,19 +165,144 @@ function EventFeed({ activity }: { activity: ActivitySnapshot }) {
   );
 }
 
+// --- Layer 2.5: Session Stats ---
+
+function formatRelativeTime(ts: number): string {
+  const diff = Date.now() - ts;
+  if (diff < 60000) return "just now";
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ${Math.floor((diff % 3600000) / 60000)}m ago`;
+  return `${Math.floor(diff / 86400000)}d ago`;
+}
+
+function SessionStats({
+  experimentCount,
+  bestValue,
+  metricName,
+  metricDirection,
+  startedAt,
+  lastRestartAt,
+  restartCount,
+  lastSummary,
+  strategy,
+}: {
+  experimentCount: number;
+  bestValue: number | null;
+  metricName: string;
+  metricDirection: string;
+  startedAt: number | null;
+  lastRestartAt: number | null;
+  restartCount: number;
+  lastSummary: string | null;
+  strategy: string;
+}) {
+  const elapsed = startedAt ? Date.now() - startedAt : 0;
+  const hours = Math.floor(elapsed / 3600000);
+  const mins = Math.floor((elapsed % 3600000) / 60000);
+  const runtime = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+  // Show first line or first 120 chars of strategy as a brief
+  const strategyBrief = strategy.split("\n")[0].slice(0, 120) + (strategy.length > 120 ? "..." : "");
+
+  return (
+    <div
+      className="mt-1 rounded border px-3 py-2"
+      style={{
+        borderColor: "var(--color-border)",
+        backgroundColor: "var(--color-bg)",
+      }}
+    >
+      {/* Strategy brief */}
+      <div className="mb-1.5 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+        {strategyBrief}
+      </div>
+
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+        {startedAt && (
+          <div>
+            <span style={{ color: "var(--color-text-muted)" }}>Running: </span>
+            <span className="tabular-nums" style={{ color: "var(--color-text-secondary)" }}>{runtime}</span>
+          </div>
+        )}
+        <div>
+          <span style={{ color: "var(--color-text-muted)" }}>Experiments: </span>
+          <span className="tabular-nums" style={{ color: "var(--color-text-secondary)" }}>{experimentCount}</span>
+        </div>
+        {bestValue !== null && (
+          <div>
+            <span style={{ color: "var(--color-text-muted)" }}>Best {metricName}: </span>
+            <span className="font-semibold tabular-nums" style={{ color: "var(--color-accent)" }}>
+              {bestValue.toFixed(2)}
+            </span>
+            <span style={{ color: "var(--color-text-muted)" }}> ({metricDirection})</span>
+          </div>
+        )}
+      </div>
+
+      {/* Run timing */}
+      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+        {startedAt && (
+          <div>
+            <span style={{ color: "var(--color-text-muted)" }}>Started: </span>
+            <span style={{ color: "var(--color-text-secondary)" }}>
+              {new Date(startedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+            </span>
+          </div>
+        )}
+        {lastRestartAt && restartCount > 0 && (
+          <div>
+            <span style={{ color: "var(--color-text-muted)" }}>Last restart: </span>
+            <span style={{ color: "var(--color-text-secondary)" }}>
+              {formatRelativeTime(lastRestartAt)} (#{restartCount})
+            </span>
+          </div>
+        )}
+      </div>
+
+      {lastSummary && (
+        <div className="mt-1 text-xs" style={{ color: "var(--color-text-muted)" }}>
+          {lastSummary}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- Main exported component ---
 
 interface ActivityPanelProps {
   activity: ActivitySnapshot | null;
   error: string | null;
   isRunning: boolean;
+  experimentCount?: number;
+  bestValue?: number | null;
+  metricName?: string;
+  metricDirection?: string;
+  startedAt?: number | null;
+  lastRestartAt?: number | null;
+  restartCount?: number;
+  lastSummary?: string | null;
+  strategy?: string;
 }
 
-export function ActivityPanel({ activity, error, isRunning }: ActivityPanelProps) {
+export function ActivityPanel({
+  activity,
+  error,
+  isRunning,
+  experimentCount = 0,
+  bestValue,
+  metricName = "",
+  metricDirection = "",
+  startedAt,
+  lastRestartAt,
+  restartCount = 0,
+  lastSummary,
+  strategy = "",
+}: ActivityPanelProps) {
   const [expandLevel, setExpandLevel] = useState(0);
 
   function toggleExpand() {
-    setExpandLevel((prev) => (prev >= 1 ? 0 : 1));
+    setExpandLevel((prev) => (prev >= 2 ? 0 : prev + 1));
   }
 
   if (error) {
@@ -223,7 +348,20 @@ export function ActivityPanel({ activity, error, isRunning }: ActivityPanelProps
         expandLevel={expandLevel}
         onToggle={toggleExpand}
       />
-      {expandLevel >= 1 && <EventFeed activity={activity} />}
+      {expandLevel >= 1 && (
+        <SessionStats
+          experimentCount={experimentCount}
+          bestValue={bestValue ?? null}
+          metricName={metricName}
+          metricDirection={metricDirection}
+          startedAt={startedAt ?? null}
+          lastRestartAt={lastRestartAt ?? null}
+          restartCount={restartCount}
+          lastSummary={lastSummary ?? null}
+          strategy={strategy}
+        />
+      )}
+      {expandLevel >= 2 && <EventFeed activity={activity} />}
     </div>
   );
 }
