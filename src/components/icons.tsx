@@ -268,7 +268,6 @@ export function SearchIcon({ size = 16, className }: IconProps) {
     </svg>
   );
 }
-<<<<<<< HEAD
 
 export function SunIcon({ size = 16, className }: IconProps) {
   return (
@@ -295,5 +294,3 @@ export function MonitorIcon({ size = 16, className }: IconProps) {
     </svg>
   );
 }
-=======
->>>>>>> origin/forge/session-0
