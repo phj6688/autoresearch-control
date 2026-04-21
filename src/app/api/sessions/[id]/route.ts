@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as db from "@/lib/db";
 import {
+  startSession,
   pauseSession,
   resumeSession,
   restartSession,
@@ -40,9 +41,9 @@ export async function PATCH(
   }
 
   const action = body.action;
-  if (action !== "pause" && action !== "resume" && action !== "restart" && action !== "kill") {
+  if (action !== "start" && action !== "pause" && action !== "resume" && action !== "restart" && action !== "kill") {
     return NextResponse.json(
-      { error: 'Invalid action. Must be "pause", "resume", "restart", or "kill".' },
+      { error: 'Invalid action. Must be "start", "pause", "resume", "restart", or "kill".' },
       { status: 400 }
     );
   }
@@ -50,6 +51,9 @@ export async function PATCH(
   try {
     let session;
     switch (action) {
+      case "start":
+        session = await startSession(id);
+        break;
       case "pause":
         session = await pauseSession(id);
         break;
