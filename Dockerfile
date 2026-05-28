@@ -3,7 +3,9 @@ FROM node:22-bookworm AS deps
 WORKDIR /app
 RUN corepack enable pnpm
 COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
-RUN pnpm install --frozen-lockfile
+# --ignore-scripts: pnpm v10 hard-fails on un-allowlisted native build scripts; bypass and
+# rebuild the natives explicitly in the build stage where they're actually needed.
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Stage 2: Build
 FROM node:22-bookworm AS builder
@@ -11,7 +13,7 @@ WORKDIR /app
 RUN corepack enable pnpm
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN pnpm rebuild better-sqlite3 && pnpm build
+RUN pnpm rebuild better-sqlite3 sharp && pnpm build
 
 # Pull the Infisical CLI binary out of the official server image
 FROM infisical/infisical:v0.159.28 AS infisical-cli
