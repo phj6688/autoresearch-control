@@ -3,19 +3,20 @@ services:
     build: .
     container_name: autoresearch-control
     environment:
-    - HOSTNAME=0.0.0.0
-    - PORT=3200
-    - AUTORESEARCH_REPO_PATH=/repo
-    - AUTORESEARCH_WORKTREE_DIR=/worktrees
-    - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
-    - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
-    - DEFAULT_AGENT=${DEFAULT_AGENT:-claude-code}
-    - DEFAULT_AGENT_COMMAND=${DEFAULT_AGENT_COMMAND:-claude --model claude-opus-4-6}
-    - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-    - ASSISTANT_MODEL=${ASSISTANT_MODEL:-claude-sonnet-4-20250514}
-    network_mode: host
+      HOSTNAME: 0.0.0.0
+      PORT: 3200
+      AUTORESEARCH_REPO_PATH: /repo
+      AUTORESEARCH_WORKTREE_DIR: /worktrees
+      INFISICAL_DOMAIN: http://infisical:8080
+      INFISICAL_PROJECT_ID: ${INFISICAL_PROJECT_ID}
+      INFISICAL_ENV: prod
+    secrets:
+      - infisical_client_id
+      - infisical_client_secret
     ports:
     - 3200:3200
+    networks:
+    - platform-net
     restart: unless-stopped
     volumes:
     - ./data:/app/data
@@ -34,3 +35,13 @@ services:
     group_add:
     - video
     - render
+
+networks:
+  platform-net:
+    external: true
+
+secrets:
+  infisical_client_id:
+    file: ./secrets/infisical_client_id
+  infisical_client_secret:
+    file: ./secrets/infisical_client_secret

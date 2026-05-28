@@ -13,6 +13,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm rebuild better-sqlite3 && pnpm build
 
+# Pull the Infisical CLI binary out of the official server image
+FROM infisical/infisical:v0.159.28 AS infisical-cli
+
 # Stage 3: Production
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
@@ -48,6 +51,14 @@ COPY --from=builder /app/.next/static ./.next/static
 
 RUN mkdir -p /app/data
 
+COPY --from=infisical-cli /usr/bin/infisical /usr/local/bin/infisical
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Infisical CLI writes a tiny config to $HOME/.infisical/; give the runtime user a writable home
+ENV HOME=/tmp
+
 EXPOSE 3200
 
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["node", "server.js"]
