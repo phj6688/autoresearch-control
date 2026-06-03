@@ -18,21 +18,26 @@ if [ -z "$INFISICAL_PROJECT_ID" ] || [ -z "$INFISICAL_UNIVERSAL_AUTH_CLIENT_ID" 
   exit 1
 fi
 
-# Exchange client-id/secret for an access token. --plain emits just the token.
-TOKEN="$(infisical login \
-  --method=universal-auth \
-  --client-id="$INFISICAL_UNIVERSAL_AUTH_CLIENT_ID" \
-  --client-secret="$INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET" \
-  --domain="$INFISICAL_DOMAIN" \
-  --plain --silent)"
+# Exchange client-id/secret for a short-lived access token. The client id/secret go in as
+# command-scoped env (not --flags), so they never land in the container process list and never
+# reach the app process. --plain emits just the token.
+set +e
+TOKEN="$(
+  INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="$INFISICAL_UNIVERSAL_AUTH_CLIENT_ID" \
+  INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="$INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET" \
+  infisical login --method=universal-auth --domain="$INFISICAL_DOMAIN" --plain --silent
+)"
+login_rc=$?
+set -e
 
-if [ -z "$TOKEN" ]; then
-  echo "[entrypoint] infisical login failed" >&2
+if [ "$login_rc" -ne 0 ] || [ -z "$TOKEN" ]; then
+  echo "[entrypoint] infisical login failed (rc=$login_rc)" >&2
   exit 1
 fi
 
-exec infisical run \
-  --token="$TOKEN" \
+# Token goes in via INFISICAL_TOKEN env, not --token, so it stays out of the process list
+# (where the unprivileged agent user could otherwise read it).
+exec env INFISICAL_TOKEN="$TOKEN" infisical run \
   --domain="$INFISICAL_DOMAIN" \
   --projectId="$INFISICAL_PROJECT_ID" \
   --env="$INFISICAL_ENV" \
