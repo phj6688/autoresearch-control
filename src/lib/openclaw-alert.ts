@@ -3,9 +3,10 @@
  * All errors are swallowed — alerting must never crash the main flow.
  */
 
-const OPENCLAW_URL = "http://localhost:7777/api/messages";
+const OPENCLAW_URL = process.env.OPENCLAW_ALERT_URL;
 
 async function sendAlert(text: string): Promise<void> {
+  if (!OPENCLAW_URL) return;
   try {
     await fetch(OPENCLAW_URL, {
       method: "POST",
