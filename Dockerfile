@@ -1,17 +1,24 @@
 # Stage 1: Install dependencies
 FROM node:22-bookworm AS deps
 WORKDIR /app
-RUN corepack enable pnpm
-COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile
+# Pin pnpm: 11.x silently stopped running native build scripts (better-sqlite3 ends up with no
+# compiled binary). 10.34.1 honors the onlyBuiltDependencies allowlist and compiles it.
+RUN corepack enable pnpm && corepack prepare pnpm@10.34.1 --activate
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
+# --ignore-scripts: pnpm v10 hard-fails on un-allowlisted native build scripts; bypass and
+# rebuild the natives explicitly in the build stage where they're actually needed.
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Stage 2: Build
 FROM node:22-bookworm AS builder
 WORKDIR /app
-RUN corepack enable pnpm
+RUN corepack enable pnpm && corepack prepare pnpm@10.34.1 --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN pnpm rebuild better-sqlite3 && pnpm build
+RUN pnpm rebuild better-sqlite3 sharp && pnpm build
+
+# Pull the Infisical CLI binary out of the official server image
+FROM infisical/infisical:v0.159.28 AS infisical-cli
 
 # Stage 3: Production
 FROM node:22-bookworm-slim AS runner
@@ -48,6 +55,16 @@ COPY --from=builder /app/.next/static ./.next/static
 
 RUN mkdir -p /app/data
 
+COPY --from=infisical-cli /usr/bin/infisical /usr/local/bin/infisical
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# HOME must be /root, the user this container runs as: /root/.gitconfig holds safe.directory=*
+# (without it, simple-git fails with "dubious ownership" on host-owned worktrees), and it is
+# where the Infisical CLI writes its config.
+ENV HOME=/root
+
 EXPOSE 3200
 
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["node", "server.js"]
