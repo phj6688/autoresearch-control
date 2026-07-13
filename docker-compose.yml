@@ -42,7 +42,8 @@ services:
     - video
     - render
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3200/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      # The app serves under basePath /proxy/autoresearch (dashboard proxy path).
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3200/proxy/autoresearch/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 30s
       timeout: 5s
       retries: 3
