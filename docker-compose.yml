@@ -1,3 +1,5 @@
+name: autoresearch-control
+
 services:
   mission-control:
     build: .
@@ -19,14 +21,18 @@ services:
     - platform-net
     restart: unless-stopped
     volumes:
-    - ./data:/app/data
-    - ${AUTORESEARCH_REPO_PATH:-./repo}:/repo
-    - ${AUTORESEARCH_WORKTREE_DIR:-./worktrees}:/worktrees
-    - /home/lumo/docboost:/docboost
+    # State lives under ~/data since the 2026-07 reorg (was ./data in the
+    # source tree; the docboost import bind is gone with the lumo account).
+    - /home/peyman/data/autoresearch-control/data:/app/data
+    - ${AUTORESEARCH_REPO_PATH:-/home/peyman/data/autoresearch-control/repo}:/repo
+    - ${AUTORESEARCH_WORKTREE_DIR:-/home/peyman/data/autoresearch-control/worktrees}:/worktrees
     - /sys/class/drm:/sys/class/drm:ro
     - /dev/dri:/dev/dri
     - /dev/kfd:/dev/kfd
-    - /home/peyman/.local/share/claude/versions/2.1.77:/usr/local/bin/claude:ro
+    # Deployment-owned copy (bin/ is gitignored): version-dir mounts break
+    # when the claude auto-updater prunes old versions, which is exactly how
+    # the previous 2.1.77 mount died. Refresh by re-copying a newer binary.
+    - ./bin/claude:/usr/local/bin/claude:ro
     - /home/peyman/.claude:/home/agent/.claude
     - /home/peyman/.claude.json:/home/agent/.claude.json
     devices:
@@ -35,6 +41,12 @@ services:
     group_add:
     - video
     - render
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3200/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 networks:
   platform-net:
