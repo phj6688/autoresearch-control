@@ -81,7 +81,6 @@ export interface Alert {
 export type SSEEvent =
   | { type: "experiment"; sessionId: string; experiment: Experiment }
   | { type: "session-status"; sessionId: string; status: SessionStatus }
-  | { type: "gpu-update"; gpus: GpuInfo[] }
   | { type: "alert"; alert: Alert }
   | { type: "health-event"; event: SessionEvent }
   | { type: "heartbeat" };
