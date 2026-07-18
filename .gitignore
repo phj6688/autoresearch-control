@@ -10,3 +10,11 @@ maestro/
 secrets/*
 !secrets/.gitkeep
 bin/
+
+# FORGE workflow artifacts are local-only, never committed
+AUDIT.md
+AUDIT-PROMPT.md
+AUDIT-SCARS.md
+TASKSPEC.md
+EXECUTION-GUIDE.md
+sessions/

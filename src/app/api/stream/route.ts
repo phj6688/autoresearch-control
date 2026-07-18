@@ -1,17 +1,11 @@
 import { broker } from "@/lib/sse-broker";
-import { startDocboostWatcher } from "@/lib/docboost-watcher";
 import { startHealthAgent } from "@/lib/health-agent";
 
 export const dynamic = "force-dynamic";
 
-let docboostWatcherStarted = false;
 let healthAgentStarted = false;
 
 export function GET(): Response {
-  if (!docboostWatcherStarted) {
-    docboostWatcherStarted = true;
-    startDocboostWatcher();
-  }
   if (!healthAgentStarted) {
     healthAgentStarted = true;
     startHealthAgent();
