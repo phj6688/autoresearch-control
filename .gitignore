@@ -7,3 +7,6 @@ next-env.d.ts
 .superpowers/
 .claude/
 maestro/
+secrets/*
+!secrets/.gitkeep
+bin/
