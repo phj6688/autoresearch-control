@@ -83,14 +83,6 @@ export function useSSE(): void {
           .updateSessionStatus(data.sessionId, data.status);
       });
 
-      es.addEventListener("gpu-update", (e) => {
-        const data = JSON.parse(e.data) as {
-          type: "gpu-update";
-          gpus: GpuInfo[];
-        };
-        useSessionStore.getState().setGpus(data.gpus);
-      });
-
       es.addEventListener("health-event", (e) => {
         const data = JSON.parse(e.data) as { type: "health-event"; event: SessionEvent };
         useEventsStore.getState().prependEvent(data.event);
