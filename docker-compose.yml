@@ -16,7 +16,7 @@ services:
       - infisical_client_id
       - infisical_client_secret
     ports:
-    - 3200:3200
+    - 127.0.0.1:3200:3200
     networks:
     - platform-net
     restart: unless-stopped
