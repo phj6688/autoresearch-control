@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Security
+- Publish port 3200 on 127.0.0.1 only. It was bound to every interface (tailnet and LAN) with no auth on any route.
+
 ### Removed
 - Dead docboost import path: `docboost-watcher.ts` and `scripts/import-docboost.ts` pointed at
   `/home/lumo/docboost`, an account and mount removed in the 2026-07 host reorg. The watcher was
